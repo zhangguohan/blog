@@ -1,0 +1,1611 @@
+一、添加Greenplums Segment：
+
+
+1、System is up and available
+2、Devise and execute a plan for ordering, building, and networking new hardware platforms.
+3、Devise a database expansion plan. Map the number of segments per host, schedule the offline period for testing performance and creating the expansion schema, and schedule the intervals for table redistribution.
+
+
+4、添加新节点到all_hosts及新生成一个new_hosts文件
+echo "sdw03" >> new_hosts
+
+echo "sdw03" >> all_hosts
+echo "sdw03" >> all_segs 
+more new_hosts 
+  
+5、添加所有节点通信（root:gpadmin二个用户）
+
+gpssh-exkeys -f /home/gpadmin/all_host 
+
+gpssh -f new_hosts  '/usr/sbin/useradd gpadmin -d /home/gpadmin -s /bin/bash'
+gpssh -f new_hosts  'echo gpadmin | passwd --stdin gpadmin'
+su - gpadmin
+gpscp -f /home/gpadmin/new_hosts /usr/local/gp.tar =:/usr/local
+gpssh -f /home/gpadmin/new_hosts 
+
+=> gtar --directory /usr/local -xvf /usr/local/gp.tar
+
+
+
+[root@mdw gpadmin]# gpssh -f /home/gpadmin/new_hosts 'mkdir /gpdata'
+[sdw03]
+[root@mdw gpadmin]# gpssh -f /home/gpadmin/new_hosts 'chown gpadmin:gpadmin -R /gpdata'
+[sdw03]
+[root@mdw gpadmin]#
+
+6、在mdw节点添加PGDATABASE=DBNAME
+
+[gpadmin@mdw ~]$ vi .bashrc  // 添加PGDATABASE=DBNAME
+
+# User specific aliases and functions
+
+source /usr/local/gpdb-5.0.0/greenplum_path.sh
+
+GPHOME=/usr/local/gpdb-5.0.0
+MASTER_DATA_DIRECTORY=/gpmaster/gpseg-1
+PGDATABASE=tank
+PGPORT=5432 
+export MASTER_DATA_DIRECTORY  GPHOME PGDATABASE PGPORT 
+
+
+7、生成配置文件
+
+[root@mdw gpadmin]# su - gpadmin
+Last login: Thu Mar 23 09:12:38 UTC 2017 on pts/0
+
+[gpadmin@mdw ~]$ gpexpand -f /home/gpadmin/new_hosts 
+20170323:09:14:25:005897 gpexpand:mdw:gpadmin-[INFO]:-local Greenplum Version: 'postgres (Greenplum Database) 5.0.0-alpha.0+dev.212.gb533bcb build dev'
+20170323:09:14:25:005897 gpexpand:mdw:gpadmin-[INFO]:-master Greenplum Version: 'PostgreSQL 8.3.23 (Greenplum Database 5.0.0-alpha.0+dev.212.gb533bcb build dev) on x86_64-pc-linux-gnu, compiled by GCC gcc (GCC) 4.8.5 20150623 (Red Hat 4.8.5-11) compiled on Mar 19 2017 10:21:20'
+20170323:09:14:25:005897 gpexpand:mdw:gpadmin-[INFO]:-Querying gpexpand schema for current expansion state
+
+System Expansion is used to add segments to an existing GPDB array.
+gpexpand did not detect a System Expansion that is in progress.
+
+Before initiating a System Expansion, you need to provision and burn-in
+the new hardware.  Please be sure to run gpcheckperf to make sure the
+new hardware is working properly.
+
+Please refer to the Admin Guide for more information.
+
+Would you like to initiate a new System Expansion Yy|Nn (default=N):
+> y
+
+    By default, new hosts are configured with the same number of primary
+    segments as existing hosts.  Optionally, you can increase the number
+    of segments per host.
+
+    For example, if existing hosts have two primary segments, entering a value
+    of 2 will initialize two additional segments on existing hosts, and four
+    segments on new hosts.  In addition, mirror segments will be added for
+    these new primary segments if mirroring is enabled.
+    
+
+How many new primary segments per host do you want to add? (default=0):
+> 
+
+Generating configuration file...
+
+20170323:09:14:30:005897 gpexpand:mdw:gpadmin-[INFO]:-Generating input file...
+
+Input configuration files were written to 'gpexpand_inputfile_20170323_091430' and 'None'.
+Please review the file and make sure that it is correct then re-run
+with: gpexpand -i gpexpand_inputfile_20170323_091430 -D tank
+                
+20170323:09:14:30:005897 gpexpand:mdw:gpadmin-[INFO]:-Exiting...
+
+
+8、根据配置文件创建新 Segment
+
+[gpadmin@mdw ~]$ gpexpand -i gpexpand_inputfile_20170323_091430 -D tank
+20170323:09:14:57:005934 gpexpand:mdw:gpadmin-[INFO]:-local Greenplum Version: 'postgres (Greenplum Database) 5.0.0-alpha.0+dev.212.gb533bcb build dev'
+20170323:09:14:57:005934 gpexpand:mdw:gpadmin-[INFO]:-master Greenplum Version: 'PostgreSQL 8.3.23 (Greenplum Database 5.0.0-alpha.0+dev.212.gb533bcb build dev) on x86_64-pc-linux-gnu, compiled by GCC gcc (GCC) 4.8.5 20150623 (Red Hat 4.8.5-11) compiled on Mar 19 2017 10:21:20'
+20170323:09:14:57:005934 gpexpand:mdw:gpadmin-[INFO]:-Querying gpexpand schema for current expansion state
+20170323:09:14:57:005934 gpexpand:mdw:gpadmin-[INFO]:-Readying Greenplum Database for a new expansion
+20170323:09:15:13:005934 gpexpand:mdw:gpadmin-[INFO]:-Checking database template1 for unalterable tables...
+20170323:09:15:13:005934 gpexpand:mdw:gpadmin-[INFO]:-Checking database postgres for unalterable tables...
+20170323:09:15:13:005934 gpexpand:mdw:gpadmin-[INFO]:-Checking database tank for unalterable tables...
+20170323:09:15:14:005934 gpexpand:mdw:gpadmin-[INFO]:-Checking database template1 for tables with unique indexes...
+20170323:09:15:14:005934 gpexpand:mdw:gpadmin-[INFO]:-Checking database postgres for tables with unique indexes...
+20170323:09:15:14:005934 gpexpand:mdw:gpadmin-[INFO]:-Checking database tank for tables with unique indexes...
+20170323:09:15:14:005934 gpexpand:mdw:gpadmin-[INFO]:-Tables with unique indexes exist.  Until these tables are successfully
+20170323:09:15:14:005934 gpexpand:mdw:gpadmin-[INFO]:-redistributed, unique constraints may be violated.  For more information
+20170323:09:15:14:005934 gpexpand:mdw:gpadmin-[INFO]:-on this issue, see the Greenplum Database Administrator Guide
+Would you like to continue with System Expansion Yy|Nn (default=N):
+> y
+20170323:09:16:20:005934 gpexpand:mdw:gpadmin-[INFO]:-Syncing Greenplum Database extensions
+20170323:09:16:20:005934 gpexpand:mdw:gpadmin-[INFO]:-The packages on sdw03 are consistent.
+20170323:09:16:21:005934 gpexpand:mdw:gpadmin-[INFO]:-Creating segment template
+20170323:09:16:21:005934 gpexpand:mdw:gpadmin-[INFO]:-VACUUM FULL on the catalog tables
+20170323:09:16:43:005934 gpexpand:mdw:gpadmin-[INFO]:-Starting copy of segment dbid 1 to location /gpmaster/gpexpand_03232017_5934
+20170323:09:16:52:005934 gpexpand:mdw:gpadmin-[INFO]:-Copying postgresql.conf from existing segment into template
+20170323:09:16:52:005934 gpexpand:mdw:gpadmin-[INFO]:-Copying pg_hba.conf from existing segment into template
+20170323:09:16:52:005934 gpexpand:mdw:gpadmin-[INFO]:-Adding new segments into template pg_hba.conf
+20170323:09:16:52:005934 gpexpand:mdw:gpadmin-[INFO]:-Creating schema tar file
+20170323:09:16:52:005934 gpexpand:mdw:gpadmin-[INFO]:-Distributing template tar file to new hosts
+20170323:09:17:09:005934 gpexpand:mdw:gpadmin-[INFO]:-Configuring new segments (primary)
+20170323:09:17:11:005934 gpexpand:mdw:gpadmin-[INFO]:-Configuring new segments (mirror)
+20170323:09:17:11:005934 gpexpand:mdw:gpadmin-[INFO]:-Backing up pg_hba.conf file on original segments
+20170323:09:17:11:005934 gpexpand:mdw:gpadmin-[INFO]:-Copying new pg_hba.conf file to original segments
+20170323:09:17:12:005934 gpexpand:mdw:gpadmin-[INFO]:-Configuring original segments
+20170323:09:17:12:005934 gpexpand:mdw:gpadmin-[INFO]:-Cleaning up temporary template files
+20170323:09:17:12:005934 gpexpand:mdw:gpadmin-[INFO]:-Starting Greenplum Database in restricted mode
+20170323:09:17:22:005934 gpexpand:mdw:gpadmin-[INFO]:-Stopping database
+20170323:09:17:34:005934 gpexpand:mdw:gpadmin-[INFO]:-Checking if Transaction filespace was moved
+20170323:09:17:34:005934 gpexpand:mdw:gpadmin-[INFO]:-Checking if Temporary filespace was moved
+20170323:09:17:34:005934 gpexpand:mdw:gpadmin-[INFO]:-Configuring new segment filespaces
+20170323:09:17:34:005934 gpexpand:mdw:gpadmin-[INFO]:-Cleaning up databases in new segments.
+20170323:09:17:34:005934 gpexpand:mdw:gpadmin-[INFO]:-Starting master in utility mode
+20170323:09:17:37:005934 gpexpand:mdw:gpadmin-[INFO]:-Stopping master in utility mode
+20170323:09:17:58:005934 gpexpand:mdw:gpadmin-[INFO]:-Starting Greenplum Database in restricted mode
+20170323:09:18:08:005934 gpexpand:mdw:gpadmin-[INFO]:-Creating expansion schema
+20170323:09:18:15:005934 gpexpand:mdw:gpadmin-[INFO]:-Populating gpexpand.status_detail with data from database template1
+20170323:09:18:16:005934 gpexpand:mdw:gpadmin-[INFO]:-Populating gpexpand.status_detail with data from database postgres
+20170323:09:18:17:005934 gpexpand:mdw:gpadmin-[INFO]:-Populating gpexpand.status_detail with data from database tank
+20170323:09:18:23:005934 gpexpand:mdw:gpadmin-[INFO]:-Stopping Greenplum Database
+20170323:09:18:41:005934 gpexpand:mdw:gpadmin-[INFO]:-Starting Greenplum Database
+20170323:09:18:50:005934 gpexpand:mdw:gpadmin-[INFO]:-************************************************
+20170323:09:18:50:005934 gpexpand:mdw:gpadmin-[INFO]:-Initialization of the system expansion complete.
+20170323:09:18:50:005934 gpexpand:mdw:gpadmin-[INFO]:-To begin table expansion onto the new segments
+20170323:09:18:50:005934 gpexpand:mdw:gpadmin-[INFO]:-rerun gpexpand
+20170323:09:18:50:005934 gpexpand:mdw:gpadmin-[INFO]:-************************************************
+20170323:09:18:50:005934 gpexpand:mdw:gpadmin-[INFO]:-Exiting...
+[gpadmin@mdw ~]$ 
+
+
+
+9、Redistributing Tables Using gpexpand
+# gpexpand -d 60:00:00
+
+
+
+tank=# ALTER TABLE table1 SET WITH (REORGANIZE=TRUE);
+ALTER TABLE
+tank=# SELECT gp_segment_id, count(1) FROM table1 GROUP BY gp_segment_id;
+ gp_segment_id | count  
+---------------+--------
+             1 | 900057
+             0 | 899922
+             2 | 900021
+(3 rows)
+
+
+
+
+
+
+
+
+
+二、开启各节点镜象
+
+1、新建mirror镜象目录
+
+[root@mdw ~]# gpssh -f /home/gpadmin/all_segs 'mkdir -p /gpdata/mirror'
+[sdw02]
+[sdw01]
+[sdw03]
+[root@mdw ~]# gpssh -f /home/gpadmin/all_segs 'chown gpadmin:gpadmin -R /gpdata/mirror'
+[sdw01]
+[sdw02]
+[sdw03]
+[root@mdw ~]# 
+
+
+2、生成mirror_config文件
+[gpadmin@mdw ~]$ gpaddmirrors -o sample_mirror_config
+20170324:09:17:33:044010 gpaddmirrors:mdw:gpadmin-[INFO]:-Starting gpaddmirrors with args: -o sample_mirror_config
+20170324:09:17:33:044010 gpaddmirrors:mdw:gpadmin-[INFO]:-local Greenplum Version: 'postgres (Greenplum Database) 5.0.0-alpha.0+dev.212.gb533bcb build dev'
+20170324:09:17:33:044010 gpaddmirrors:mdw:gpadmin-[INFO]:-master Greenplum Version: 'PostgreSQL 8.3.23 (Greenplum Database 5.0.0-alpha.0+dev.212.gb533bcb build dev) on x86_64-pc-linux-gnu, compiled by GCC gcc (GCC) 4.8.5 20150623 (Red Hat 4.8.5-11) compiled on Mar 24 2017 06:48:28'
+20170324:09:17:33:044010 gpaddmirrors:mdw:gpadmin-[INFO]:-Obtaining Segment details from master...
+Enter mirror segment data directory location 1 of 1 >
+/gpdata/mirror //输入各节点mirror目录
+20170324:09:17:42:044010 gpaddmirrors:mdw:gpadmin-[INFO]:-Configuration file output to sample_mirror_config successfully.
+
+3、使用生成镜象文件生成各节点镜象
+[gpadmin@mdw ~]$ gpaddmirrors -p 1000 -i sample_mirror_config
+20170324:09:17:47:044048 gpaddmirrors:mdw:gpadmin-[INFO]:-Starting gpaddmirrors with args: -p 1000 -i sample_mirror_config
+20170324:09:17:47:044048 gpaddmirrors:mdw:gpadmin-[INFO]:-local Greenplum Version: 'postgres (Greenplum Database) 5.0.0-alpha.0+dev.212.gb533bcb build dev'
+20170324:09:17:47:044048 gpaddmirrors:mdw:gpadmin-[INFO]:-master Greenplum Version: 'PostgreSQL 8.3.23 (Greenplum Database 5.0.0-alpha.0+dev.212.gb533bcb build dev) on x86_64-pc-linux-gnu, compiled by GCC gcc (GCC) 4.8.5 20150623 (Red Hat 4.8.5-11) compiled on Mar 24 2017 06:48:28'
+20170324:09:17:47:044048 gpaddmirrors:mdw:gpadmin-[INFO]:-Obtaining Segment details from master...
+20170324:09:17:47:044048 gpaddmirrors:mdw:gpadmin-[INFO]:-Greenplum Add Mirrors Parameters
+20170324:09:17:47:044048 gpaddmirrors:mdw:gpadmin-[INFO]:----------------------------------------------------------
+20170324:09:17:47:044048 gpaddmirrors:mdw:gpadmin-[INFO]:-Greenplum master data directory          = /gpmaster/gpseg-1
+20170324:09:17:47:044048 gpaddmirrors:mdw:gpadmin-[INFO]:-Greenplum master port                    = 5432
+20170324:09:17:47:044048 gpaddmirrors:mdw:gpadmin-[INFO]:-Parallel batch limit                     = 16
+20170324:09:17:47:044048 gpaddmirrors:mdw:gpadmin-[INFO]:----------------------------------------------------------
+20170324:09:17:47:044048 gpaddmirrors:mdw:gpadmin-[INFO]:-Mirror 1 of 3
+20170324:09:17:47:044048 gpaddmirrors:mdw:gpadmin-[INFO]:----------------------------------------------------------
+20170324:09:17:47:044048 gpaddmirrors:mdw:gpadmin-[INFO]:-   Primary instance host               = sdw01
+20170324:09:17:47:044048 gpaddmirrors:mdw:gpadmin-[INFO]:-   Primary instance address            = sdw01
+20170324:09:17:47:044048 gpaddmirrors:mdw:gpadmin-[INFO]:-   Primary instance directory          = /gpdata/gpseg0
+20170324:09:17:47:044048 gpaddmirrors:mdw:gpadmin-[INFO]:-   Primary instance port               = 40000
+20170324:09:17:47:044048 gpaddmirrors:mdw:gpadmin-[INFO]:-   Primary instance replication port   = 43000
+20170324:09:17:47:044048 gpaddmirrors:mdw:gpadmin-[INFO]:-   Mirror instance host                = sdw02
+20170324:09:17:47:044048 gpaddmirrors:mdw:gpadmin-[INFO]:-   Mirror instance address             = sdw02
+20170324:09:17:47:044048 gpaddmirrors:mdw:gpadmin-[INFO]:-   Mirror instance directory           = /gpdata/mirror/gpseg0
+20170324:09:17:47:044048 gpaddmirrors:mdw:gpadmin-[INFO]:-   Mirror instance port                = 41000
+20170324:09:17:47:044048 gpaddmirrors:mdw:gpadmin-[INFO]:-   Mirror instance replication port    = 42000
+20170324:09:17:47:044048 gpaddmirrors:mdw:gpadmin-[INFO]:----------------------------------------------------------
+20170324:09:17:47:044048 gpaddmirrors:mdw:gpadmin-[INFO]:-Mirror 2 of 3
+20170324:09:17:47:044048 gpaddmirrors:mdw:gpadmin-[INFO]:----------------------------------------------------------
+20170324:09:17:47:044048 gpaddmirrors:mdw:gpadmin-[INFO]:-   Primary instance host               = sdw02
+20170324:09:17:47:044048 gpaddmirrors:mdw:gpadmin-[INFO]:-   Primary instance address            = sdw02
+20170324:09:17:47:044048 gpaddmirrors:mdw:gpadmin-[INFO]:-   Primary instance directory          = /gpdata/gpseg1
+20170324:09:17:47:044048 gpaddmirrors:mdw:gpadmin-[INFO]:-   Primary instance port               = 40000
+20170324:09:17:47:044048 gpaddmirrors:mdw:gpadmin-[INFO]:-   Primary instance replication port   = 43000
+20170324:09:17:47:044048 gpaddmirrors:mdw:gpadmin-[INFO]:-   Mirror instance host                = sdw03
+20170324:09:17:47:044048 gpaddmirrors:mdw:gpadmin-[INFO]:-   Mirror instance address             = sdw03
+20170324:09:17:47:044048 gpaddmirrors:mdw:gpadmin-[INFO]:-   Mirror instance directory           = /gpdata/mirror/gpseg1
+20170324:09:17:47:044048 gpaddmirrors:mdw:gpadmin-[INFO]:-   Mirror instance port                = 41000
+20170324:09:17:47:044048 gpaddmirrors:mdw:gpadmin-[INFO]:-   Mirror instance replication port    = 42000
+20170324:09:17:47:044048 gpaddmirrors:mdw:gpadmin-[INFO]:----------------------------------------------------------
+20170324:09:17:47:044048 gpaddmirrors:mdw:gpadmin-[INFO]:-Mirror 3 of 3
+20170324:09:17:47:044048 gpaddmirrors:mdw:gpadmin-[INFO]:----------------------------------------------------------
+20170324:09:17:47:044048 gpaddmirrors:mdw:gpadmin-[INFO]:-   Primary instance host               = sdw03
+20170324:09:17:47:044048 gpaddmirrors:mdw:gpadmin-[INFO]:-   Primary instance address            = sdw03
+20170324:09:17:47:044048 gpaddmirrors:mdw:gpadmin-[INFO]:-   Primary instance directory          = /gpdata/gpseg2
+20170324:09:17:47:044048 gpaddmirrors:mdw:gpadmin-[INFO]:-   Primary instance port               = 40000
+20170324:09:17:47:044048 gpaddmirrors:mdw:gpadmin-[INFO]:-   Primary instance replication port   = 43000
+20170324:09:17:47:044048 gpaddmirrors:mdw:gpadmin-[INFO]:-   Mirror instance host                = sdw01
+20170324:09:17:47:044048 gpaddmirrors:mdw:gpadmin-[INFO]:-   Mirror instance address             = sdw01
+20170324:09:17:47:044048 gpaddmirrors:mdw:gpadmin-[INFO]:-   Mirror instance directory           = /gpdata/mirror/gpseg2
+20170324:09:17:47:044048 gpaddmirrors:mdw:gpadmin-[INFO]:-   Mirror instance port                = 41000
+20170324:09:17:47:044048 gpaddmirrors:mdw:gpadmin-[INFO]:-   Mirror instance replication port    = 42000
+20170324:09:17:47:044048 gpaddmirrors:mdw:gpadmin-[INFO]:----------------------------------------------------------
+
+Continue with add mirrors procedure Yy|Nn (default=N):
+> y // 输入Y
+
+20170324:09:18:00:044048 gpaddmirrors:mdw:gpadmin-[INFO]:-3 segment(s) to add
+20170324:09:18:00:044048 gpaddmirrors:mdw:gpadmin-[INFO]:-Building template directory
+20170324:09:18:01:044048 gpaddmirrors:mdw:gpadmin-[INFO]:-Validating remote directories
+. 
+20170324:09:18:02:044048 gpaddmirrors:mdw:gpadmin-[INFO]:-Copying template directory file
+. 
+20170324:09:18:03:044048 gpaddmirrors:mdw:gpadmin-[INFO]:-Configuring new segments
+. 
+20170324:09:18:04:044048 gpaddmirrors:mdw:gpadmin-[INFO]:-Cleaning files
+. 
+20170324:09:18:05:044048 gpaddmirrors:mdw:gpadmin-[INFO]:-Starting file move procedure for sdw02:/gpdata/mirror/gpseg0:content=0:dbid=5:mode=r:status=u
+20170324:09:18:05:044048 gpaddmirrors:mdw:gpadmin-[INFO]:-Starting file move procedure for sdw03:/gpdata/mirror/gpseg1:content=1:dbid=6:mode=r:status=u
+20170324:09:18:05:044048 gpaddmirrors:mdw:gpadmin-[INFO]:-Starting file move procedure for sdw01:/gpdata/mirror/gpseg2:content=2:dbid=7:mode=r:status=u
+20170324:09:18:05:044048 gpaddmirrors:mdw:gpadmin-[INFO]:-Updating configuration with new mirrors
+20170324:09:18:05:044048 gpaddmirrors:mdw:gpadmin-[INFO]:-Updating mirrors
+. 
+20170324:09:18:06:044048 gpaddmirrors:mdw:gpadmin-[INFO]:-Starting mirrors
+20170324:09:18:06:044048 gpaddmirrors:mdw:gpadmin-[INFO]:-Commencing parallel primary and mirror segment instance startup, please wait...
+.. 
+20170324:09:18:08:044048 gpaddmirrors:mdw:gpadmin-[INFO]:-Process results...
+20170324:09:18:08:044048 gpaddmirrors:mdw:gpadmin-[INFO]:-Updating configuration to mark mirrors up
+20170324:09:18:08:044048 gpaddmirrors:mdw:gpadmin-[INFO]:-Updating primaries
+20170324:09:18:08:044048 gpaddmirrors:mdw:gpadmin-[INFO]:-Commencing parallel primary conversion of 3 segments, please wait...
+.. 
+20170324:09:18:10:044048 gpaddmirrors:mdw:gpadmin-[INFO]:-Process results...
+20170324:09:18:10:044048 gpaddmirrors:mdw:gpadmin-[INFO]:-Done updating primaries
+20170324:09:18:10:044048 gpaddmirrors:mdw:gpadmin-[INFO]:-******************************************************************
+20170324:09:18:10:044048 gpaddmirrors:mdw:gpadmin-[INFO]:-Mirror segments have been added; data synchronization is in progress.
+20170324:09:18:10:044048 gpaddmirrors:mdw:gpadmin-[INFO]:-Data synchronization will continue in the background.
+20170324:09:18:10:044048 gpaddmirrors:mdw:gpadmin-[INFO]:-
+20170324:09:18:10:044048 gpaddmirrors:mdw:gpadmin-[INFO]:-Use  gpstate -s  to check the resynchronization progress.
+20170324:09:18:10:044048 gpaddmirrors:mdw:gpadmin-[INFO]:-******************************************************************
+[gpadmin@mdw ~]$ 
+
+
+4、使用gpstate -s  gpstate -m  查看镜象同步情况
+
+[gpadmin@mdw ~]$ gpstate -m
+20170324:09:21:24:044377 gpstate:mdw:gpadmin-[INFO]:-Starting gpstate with args: -m
+20170324:09:21:24:044377 gpstate:mdw:gpadmin-[INFO]:-local Greenplum Version: 'postgres (Greenplum Database) 5.0.0-alpha.0+dev.212.gb533bcb build dev'
+20170324:09:21:24:044377 gpstate:mdw:gpadmin-[INFO]:-master Greenplum Version: 'PostgreSQL 8.3.23 (Greenplum Database 5.0.0-alpha.0+dev.212.gb533bcb build dev) on x86_64-pc-linux-gnu, compiled by GCC gcc (GCC) 4.8.5 20150623 (Red Hat 4.8.5-11) compiled on Mar 24 2017 06:48:28'
+20170324:09:21:24:044377 gpstate:mdw:gpadmin-[INFO]:-Obtaining Segment details from master...
+20170324:09:21:24:044377 gpstate:mdw:gpadmin-[INFO]:--------------------------------------------------------------
+20170324:09:21:24:044377 gpstate:mdw:gpadmin-[INFO]:--Current GPDB mirror list and status
+20170324:09:21:24:044377 gpstate:mdw:gpadmin-[INFO]:--Type = Spread
+20170324:09:21:24:044377 gpstate:mdw:gpadmin-[INFO]:--------------------------------------------------------------
+20170324:09:21:24:044377 gpstate:mdw:gpadmin-[INFO]:-   Mirror   Datadir                 Port    Status    Data Status    
+20170324:09:21:24:044377 gpstate:mdw:gpadmin-[INFO]:-   sdw02    /gpdata/mirror/gpseg0   41000   Passive   Synchronized
+20170324:09:21:24:044377 gpstate:mdw:gpadmin-[INFO]:-   sdw03    /gpdata/mirror/gpseg1   41000   Passive   Synchronized
+20170324:09:21:24:044377 gpstate:mdw:gpadmin-[INFO]:-   sdw01    /gpdata/mirror/gpseg2   41000   Passive   Synchronized
+20170324:09:21:24:044377 gpstate:mdw:gpadmin-[INFO]:--------------------------------------------------------------
+
+
+
+
+三、新建masterstanby主节点
+
+
+[gpadmin@mdw ~]$ gpinitstandby -s sdw03 //指定备份节点
+20170324:09:20:13:044252 gpinitstandby:mdw:gpadmin-[INFO]:-Validating environment and parameters for standby initialization...
+20170324:09:20:13:044252 gpinitstandby:mdw:gpadmin-[INFO]:-Checking for filespace directory /gpmaster/gpseg-1 on sdw03
+20170324:09:20:14:044252 gpinitstandby:mdw:gpadmin-[INFO]:------------------------------------------------------
+20170324:09:20:14:044252 gpinitstandby:mdw:gpadmin-[INFO]:-Greenplum standby master initialization parameters
+20170324:09:20:14:044252 gpinitstandby:mdw:gpadmin-[INFO]:------------------------------------------------------
+20170324:09:20:14:044252 gpinitstandby:mdw:gpadmin-[INFO]:-Greenplum master hostname               = mdw
+20170324:09:20:14:044252 gpinitstandby:mdw:gpadmin-[INFO]:-Greenplum master data directory         = /gpmaster/gpseg-1
+20170324:09:20:14:044252 gpinitstandby:mdw:gpadmin-[INFO]:-Greenplum master port                   = 5432
+20170324:09:20:14:044252 gpinitstandby:mdw:gpadmin-[INFO]:-Greenplum standby master hostname       = sdw03
+20170324:09:20:14:044252 gpinitstandby:mdw:gpadmin-[INFO]:-Greenplum standby master port           = 5432
+20170324:09:20:14:044252 gpinitstandby:mdw:gpadmin-[INFO]:-Greenplum standby master data directory = /gpmaster/gpseg-1
+20170324:09:20:14:044252 gpinitstandby:mdw:gpadmin-[INFO]:-Greenplum update system catalog         = On
+20170324:09:20:14:044252 gpinitstandby:mdw:gpadmin-[INFO]:------------------------------------------------------
+20170324:09:20:14:044252 gpinitstandby:mdw:gpadmin-[INFO]:- Filespace locations
+20170324:09:20:14:044252 gpinitstandby:mdw:gpadmin-[INFO]:------------------------------------------------------
+20170324:09:20:14:044252 gpinitstandby:mdw:gpadmin-[INFO]:-pg_system -> /gpmaster/gpseg-1
+Do you want to continue with standby master initialization? Yy|Nn (default=N):
+> y //输入Y
+20170324:09:20:16:044252 gpinitstandby:mdw:gpadmin-[INFO]:-Syncing Greenplum Database extensions to standby
+20170324:09:20:16:044252 gpinitstandby:mdw:gpadmin-[INFO]:-The packages on sdw03 are consistent.
+20170324:09:20:16:044252 gpinitstandby:mdw:gpadmin-[INFO]:-Adding standby master to catalog...
+20170324:09:20:16:044252 gpinitstandby:mdw:gpadmin-[INFO]:-Database catalog updated successfully.
+20170324:09:20:16:044252 gpinitstandby:mdw:gpadmin-[INFO]:-Updating pg_hba.conf file...
+20170324:09:20:16:044252 gpinitstandby:mdw:gpadmin-[INFO]:-pg_hba.conf files updated successfully.
+20170324:09:20:22:044252 gpinitstandby:mdw:gpadmin-[INFO]:-Updating filespace flat files...
+20170324:09:20:22:044252 gpinitstandby:mdw:gpadmin-[INFO]:-Filespace flat file updated successfully.
+20170324:09:20:22:044252 gpinitstandby:mdw:gpadmin-[INFO]:-Starting standby master
+20170324:09:20:22:044252 gpinitstandby:mdw:gpadmin-[INFO]:-Checking if standby master is running on host: sdw03  in directory: /gpmaster/gpseg-1
+20170324:09:20:23:044252 gpinitstandby:mdw:gpadmin-[INFO]:-Cleaning up pg_hba.conf backup files...
+20170324:09:20:24:044252 gpinitstandby:mdw:gpadmin-[INFO]:-Backup files of pg_hba.conf cleaned up successfully.
+20170324:09:20:24:044252 gpinitstandby:mdw:gpadmin-[INFO]:-Successfully created standby master on sdw03
+[gpadmin@mdw ~]$ 
+
+
+
+
+
+四、测试 mirror高可用。
+
+
+
+
+1、关闭Segment 进行 自动切换到mirror镜象
+
+
+
+[root@sdw01 ~]# kill -9 44719
+[root@sdw01 ~]# 
+
+
+
+2、查看镜象节点中的镜象是否为Change Tracking
+[gpadmin@mdw ~]$ gpstate -m
+20170324:12:53:47:050893 gpstate:mdw:gpadmin-[INFO]:-Starting gpstate with args: -m
+20170324:12:53:47:050893 gpstate:mdw:gpadmin-[INFO]:-local Greenplum Version: 'postgres (Greenplum Database) 5.0.0-alpha.0+dev.212.gb533bcb build dev'
+20170324:12:53:47:050893 gpstate:mdw:gpadmin-[INFO]:-master Greenplum Version: 'PostgreSQL 8.3.23 (Greenplum Database 5.0.0-alpha.0+dev.212.gb533bcb build dev) on x86_64-pc-linux-gnu, compiled by GCC gcc (GCC) 4.8.5 20150623 (Red Hat 4.8.5-11) compiled on Mar 24 2017 06:48:28'
+20170324:12:53:47:050893 gpstate:mdw:gpadmin-[INFO]:-Obtaining Segment details from master...
+20170324:12:53:47:050893 gpstate:mdw:gpadmin-[INFO]:--------------------------------------------------------------
+20170324:12:53:47:050893 gpstate:mdw:gpadmin-[INFO]:--Current GPDB mirror list and status
+20170324:12:53:47:050893 gpstate:mdw:gpadmin-[INFO]:--Type = Spread
+20170324:12:53:47:050893 gpstate:mdw:gpadmin-[INFO]:--------------------------------------------------------------
+20170324:12:53:47:050893 gpstate:mdw:gpadmin-[INFO]:-   Mirror   Datadir                 Port    Status              Data Status       
+20170324:12:53:47:050893 gpstate:mdw:gpadmin-[INFO]:-   sdw02    /gpdata/mirror/gpseg0   41000   Acting as Primary   Change Tracking
+20170324:12:53:47:050893 gpstate:mdw:gpadmin-[INFO]:-   sdw03    /gpdata/mirror/gpseg1   41000   Passive             Synchronized
+20170324:12:53:47:050893 gpstate:mdw:gpadmin-[INFO]:-   sdw01    /gpdata/mirror/gpseg2   41000   Passive             Synchronized
+20170324:12:53:47:050893 gpstate:mdw:gpadmin-[INFO]:--------------------------------------------------------------
+20170324:12:53:47:050893 gpstate:mdw:gpadmin-[WARNING]:-1 segment(s) configured as mirror(s) are acting as primaries
+20170324:12:53:47:050893 gpstate:mdw:gpadmin-[WARNING]:-1 mirror segment(s) acting as primaries are in change tracking
+[gpadmin@mdw ~]$ 
+
+
+
+3、检查数据库是否正常
+[gpadmin@mdw ~]$ psql -d tank
+psql (8.3.23)
+Type "help" for help.
+
+tank=# select * from test limit 10;
+ id |               info               |          crt_time          
+----+----------------------------------+----------------------------
+  1 | 3c22afcea817ee68603f1bcec9204d61 | 2017-03-24 09:33:59.321464
+  2 | 3c22afcea817ee68603f1bcec9204d61 | 2017-03-24 09:33:59.321464
+ 13 | 3c22afcea817ee68603f1bcec9204d61 | 2017-03-24 09:33:59.321464
+ 14 | 3c22afcea817ee68603f1bcec9204d61 | 2017-03-24 09:33:59.321464
+ 15 | 3c22afcea817ee68603f1bcec9204d61 | 2017-03-24 09:33:59.321464
+ 16 | 3c22afcea817ee68603f1bcec9204d61 | 2017-03-24 09:33:59.321464
+ 17 | 3c22afcea817ee68603f1bcec9204d61 | 2017-03-24 09:33:59.321464
+ 28 | 3c22afcea817ee68603f1bcec9204d61 | 2017-03-24 09:33:59.321464
+ 29 | 3c22afcea817ee68603f1bcec9204d61 | 2017-03-24 09:33:59.321464
+ 30 | 3c22afcea817ee68603f1bcec9204d61 | 2017-03-24 09:33:59.321464
+(10 rows)
+
+tank=# 
+
+
+
+4、恢复故障 Segment 
+
+[gpadmin@mdw ~]$ gprecoverseg 
+20170324:12:54:45:050944 gprecoverseg:mdw:gpadmin-[INFO]:-Starting gprecoverseg with args: 
+20170324:12:54:45:050944 gprecoverseg:mdw:gpadmin-[INFO]:-local Greenplum Version: 'postgres (Greenplum Database) 5.0.0-alpha.0+dev.212.gb533bcb build dev'
+20170324:12:54:46:050944 gprecoverseg:mdw:gpadmin-[INFO]:-master Greenplum Version: 'PostgreSQL 8.3.23 (Greenplum Database 5.0.0-alpha.0+dev.212.gb533bcb build dev) on x86_64-pc-linux-gnu, compiled by GCC gcc (GCC) 4.8.5 20150623 (Red Hat 4.8.5-11) compiled on Mar 24 2017 06:48:28'
+20170324:12:54:46:050944 gprecoverseg:mdw:gpadmin-[INFO]:-Checking if segments are ready to connect
+20170324:12:54:46:050944 gprecoverseg:mdw:gpadmin-[INFO]:-Obtaining Segment details from master...
+20170324:12:54:46:050944 gprecoverseg:mdw:gpadmin-[INFO]:-Obtaining Segment details from master...
+20170324:12:54:46:050944 gprecoverseg:mdw:gpadmin-[INFO]:-Greenplum instance recovery parameters
+20170324:12:54:46:050944 gprecoverseg:mdw:gpadmin-[INFO]:----------------------------------------------------------
+20170324:12:54:46:050944 gprecoverseg:mdw:gpadmin-[INFO]:-Recovery type              = Standard
+20170324:12:54:46:050944 gprecoverseg:mdw:gpadmin-[INFO]:----------------------------------------------------------
+20170324:12:54:46:050944 gprecoverseg:mdw:gpadmin-[INFO]:-Recovery 1 of 1
+20170324:12:54:46:050944 gprecoverseg:mdw:gpadmin-[INFO]:----------------------------------------------------------
+20170324:12:54:46:050944 gprecoverseg:mdw:gpadmin-[INFO]:-   Synchronization mode                        = Incremental
+20170324:12:54:46:050944 gprecoverseg:mdw:gpadmin-[INFO]:-   Failed instance host                        = sdw01
+20170324:12:54:46:050944 gprecoverseg:mdw:gpadmin-[INFO]:-   Failed instance address                     = sdw01
+20170324:12:54:46:050944 gprecoverseg:mdw:gpadmin-[INFO]:-   Failed instance directory                   = /gpdata/gpseg0
+20170324:12:54:46:050944 gprecoverseg:mdw:gpadmin-[INFO]:-   Failed instance port                        = 40000
+20170324:12:54:46:050944 gprecoverseg:mdw:gpadmin-[INFO]:-   Failed instance replication port            = 43000
+20170324:12:54:46:050944 gprecoverseg:mdw:gpadmin-[INFO]:-   Recovery Source instance host               = sdw02
+20170324:12:54:46:050944 gprecoverseg:mdw:gpadmin-[INFO]:-   Recovery Source instance address            = sdw02
+20170324:12:54:46:050944 gprecoverseg:mdw:gpadmin-[INFO]:-   Recovery Source instance directory          = /gpdata/mirror/gpseg0
+20170324:12:54:46:050944 gprecoverseg:mdw:gpadmin-[INFO]:-   Recovery Source instance port               = 41000
+20170324:12:54:46:050944 gprecoverseg:mdw:gpadmin-[INFO]:-   Recovery Source instance replication port   = 42000
+20170324:12:54:46:050944 gprecoverseg:mdw:gpadmin-[INFO]:-   Recovery Target                             = in-place
+20170324:12:54:46:050944 gprecoverseg:mdw:gpadmin-[INFO]:----------------------------------------------------------
+
+Continue with segment recovery procedure Yy|Nn (default=N):
+> y
+20170324:12:54:49:050944 gprecoverseg:mdw:gpadmin-[INFO]:-1 segment(s) to recover
+20170324:12:54:49:050944 gprecoverseg:mdw:gpadmin-[INFO]:-Ensuring 1 failed segment(s) are stopped
+ 
+20170324:12:54:50:050944 gprecoverseg:mdw:gpadmin-[INFO]:-Ensuring that shared memory is cleaned up for stopped segments
+updating flat files
+20170324:12:54:50:050944 gprecoverseg:mdw:gpadmin-[INFO]:-Updating configuration with new mirrors
+20170324:12:54:50:050944 gprecoverseg:mdw:gpadmin-[INFO]:-Updating mirrors
+. 
+20170324:12:54:51:050944 gprecoverseg:mdw:gpadmin-[INFO]:-Starting mirrors
+20170324:12:54:51:050944 gprecoverseg:mdw:gpadmin-[INFO]:-Commencing parallel primary and mirror segment instance startup, please wait...
+.. 
+20170324:12:54:53:050944 gprecoverseg:mdw:gpadmin-[INFO]:-Process results...
+20170324:12:54:53:050944 gprecoverseg:mdw:gpadmin-[INFO]:-Updating configuration to mark mirrors up
+20170324:12:54:55:050944 gprecoverseg:mdw:gpadmin-[INFO]:-Updating primaries
+20170324:12:54:55:050944 gprecoverseg:mdw:gpadmin-[INFO]:-Commencing parallel primary conversion of 1 segments, please wait...
+. 
+20170324:12:54:56:050944 gprecoverseg:mdw:gpadmin-[INFO]:-Process results...
+20170324:12:54:56:050944 gprecoverseg:mdw:gpadmin-[INFO]:-Done updating primaries
+20170324:12:54:56:050944 gprecoverseg:mdw:gpadmin-[INFO]:-******************************************************************
+20170324:12:54:56:050944 gprecoverseg:mdw:gpadmin-[INFO]:-Updating segments for resynchronization is completed.
+20170324:12:54:56:050944 gprecoverseg:mdw:gpadmin-[INFO]:-For segments updated successfully, resynchronization will continue in the background.
+20170324:12:54:56:050944 gprecoverseg:mdw:gpadmin-[INFO]:-
+20170324:12:54:56:050944 gprecoverseg:mdw:gpadmin-[INFO]:-Use  gpstate -s  to check the resynchronization progress.
+20170324:12:54:56:050944 gprecoverseg:mdw:gpadmin-[INFO]:-******************************************************************
+[gpadmin@mdw ~]$ 
+
+
+5、查看各节点状态
+[gpadmin@mdw ~]$  gpstate -s 
+20170324:12:55:27:051017 gpstate:mdw:gpadmin-[INFO]:-Starting gpstate with args: -s
+20170324:12:55:27:051017 gpstate:mdw:gpadmin-[INFO]:-local Greenplum Version: 'postgres (Greenplum Database) 5.0.0-alpha.0+dev.212.gb533bcb build dev'
+20170324:12:55:27:051017 gpstate:mdw:gpadmin-[INFO]:-master Greenplum Version: 'PostgreSQL 8.3.23 (Greenplum Database 5.0.0-alpha.0+dev.212.gb533bcb build dev) on x86_64-pc-linux-gnu, compiled by GCC gcc (GCC) 4.8.5 20150623 (Red Hat 4.8.5-11) compiled on Mar 24 2017 06:48:28'
+20170324:12:55:27:051017 gpstate:mdw:gpadmin-[INFO]:-Obtaining Segment details from master...
+20170324:12:55:27:051017 gpstate:mdw:gpadmin-[INFO]:-Gathering data from segments...
+. 
+20170324:12:55:28:051017 gpstate:mdw:gpadmin-[INFO]:-----------------------------------------------------
+20170324:12:55:28:051017 gpstate:mdw:gpadmin-[INFO]:--Master Configuration & Status
+20170324:12:55:28:051017 gpstate:mdw:gpadmin-[INFO]:-----------------------------------------------------
+20170324:12:55:28:051017 gpstate:mdw:gpadmin-[INFO]:-   Master host                    = mdw
+20170324:12:55:28:051017 gpstate:mdw:gpadmin-[INFO]:-   Master postgres process ID     = 47283
+20170324:12:55:28:051017 gpstate:mdw:gpadmin-[INFO]:-   Master data directory          = /gpmaster/gpseg-1
+20170324:12:55:28:051017 gpstate:mdw:gpadmin-[INFO]:-   Master port                    = 5432
+20170324:12:55:28:051017 gpstate:mdw:gpadmin-[INFO]:-   Master current role            = dispatch
+20170324:12:55:28:051017 gpstate:mdw:gpadmin-[INFO]:-   Greenplum initsystem version   = 5.0.0-alpha.0+dev.212.gb533bcb build dev
+20170324:12:55:28:051017 gpstate:mdw:gpadmin-[INFO]:-   Greenplum current version      = PostgreSQL 8.3.23 (Greenplum Database 5.0.0-alpha.0+dev.212.gb533bcb build dev) on x86_64-pc-linux-gnu, compiled by GCC gcc (GCC) 4.8.5 20150623 (Red Hat 4.8.5-11) compiled on Mar 24 2017 06:48:28
+20170324:12:55:28:051017 gpstate:mdw:gpadmin-[INFO]:-   Postgres version               = 8.3.23
+20170324:12:55:28:051017 gpstate:mdw:gpadmin-[INFO]:-   Master standby                 = sdw03
+20170324:12:55:28:051017 gpstate:mdw:gpadmin-[INFO]:-   Standby master state           = Standby host passive
+20170324:12:55:28:051017 gpstate:mdw:gpadmin-[INFO]:-----------------------------------------------------
+20170324:12:55:28:051017 gpstate:mdw:gpadmin-[INFO]:-Segment Instance Status Report
+20170324:12:55:28:051017 gpstate:mdw:gpadmin-[INFO]:-----------------------------------------------------
+20170324:12:55:28:051017 gpstate:mdw:gpadmin-[INFO]:-   Segment Info
+20170324:12:55:28:051017 gpstate:mdw:gpadmin-[INFO]:-      Hostname                                = sdw02
+20170324:12:55:28:051017 gpstate:mdw:gpadmin-[INFO]:-      Address                                 = sdw02
+20170324:12:55:28:051017 gpstate:mdw:gpadmin-[INFO]:-      Datadir                                 = /gpdata/mirror/gpseg0
+20170324:12:55:28:051017 gpstate:mdw:gpadmin-[INFO]:-      Port                                    = 41000
+20170324:12:55:28:051017 gpstate:mdw:gpadmin-[INFO]:-   Mirroring Info
+20170324:12:55:28:051017 gpstate:mdw:gpadmin-[INFO]:-      Current role                            = Primary
+20170324:12:55:28:051017 gpstate:mdw:gpadmin-[INFO]:-      Preferred role                          = Mirror
+20170324:12:55:28:051017 gpstate:mdw:gpadmin-[INFO]:-      Mirror status                           = Resynchronizing
+20170324:12:55:28:051017 gpstate:mdw:gpadmin-[INFO]:-   Change Tracking Info
+20170324:12:55:28:051017 gpstate:mdw:gpadmin-[INFO]:-      Change tracking data size               = 128 bytes
+20170324:12:55:28:051017 gpstate:mdw:gpadmin-[INFO]:-   Resynchronization Info
+20170324:12:55:28:051017 gpstate:mdw:gpadmin-[INFO]:-      Resynchronization mode                  = Incremental
+20170324:12:55:28:051017 gpstate:mdw:gpadmin-[INFO]:-      Data synchronized                       = 1.41 MB
+20170324:12:55:28:051017 gpstate:mdw:gpadmin-[INFO]:-      Estimated total data to synchronize     = Sync complete; awaiting config change
+20170324:12:55:28:051017 gpstate:mdw:gpadmin-[INFO]:-      Estimated resync progress with mirror   = 100%
+20170324:12:55:28:051017 gpstate:mdw:gpadmin-[INFO]:-      Total resync objects                    = 0
+20170324:12:55:28:051017 gpstate:mdw:gpadmin-[INFO]:-      Objects to resync                       = 0
+20170324:12:55:28:051017 gpstate:mdw:gpadmin-[INFO]:-      Estimated resync end time               = 
+20170324:12:55:28:051017 gpstate:mdw:gpadmin-[INFO]:-   Status
+20170324:12:55:28:051017 gpstate:mdw:gpadmin-[INFO]:-      PID                                     = 44477
+20170324:12:55:28:051017 gpstate:mdw:gpadmin-[INFO]:-      Configuration reports status as         = Up
+20170324:12:55:28:051017 gpstate:mdw:gpadmin-[INFO]:-      Database status                         = Up
+20170324:12:55:28:051017 gpstate:mdw:gpadmin-[INFO]:-----------------------------------------------------
+20170324:12:55:28:051017 gpstate:mdw:gpadmin-[INFO]:-   Segment Info
+20170324:12:55:28:051017 gpstate:mdw:gpadmin-[INFO]:-      Hostname                                = sdw01
+20170324:12:55:28:051017 gpstate:mdw:gpadmin-[INFO]:-      Address                                 = sdw01
+20170324:12:55:28:051017 gpstate:mdw:gpadmin-[INFO]:-      Datadir                                 = /gpdata/gpseg0
+20170324:12:55:28:051017 gpstate:mdw:gpadmin-[INFO]:-      Port                                    = 40000
+20170324:12:55:28:051017 gpstate:mdw:gpadmin-[INFO]:-   Mirroring Info
+20170324:12:55:28:051017 gpstate:mdw:gpadmin-[INFO]:-      Current role                            = Mirror
+20170324:12:55:28:051017 gpstate:mdw:gpadmin-[INFO]:-      Preferred role                          = Primary
+20170324:12:55:28:051017 gpstate:mdw:gpadmin-[INFO]:-      Mirror status                           = Resynchronizing
+20170324:12:55:28:051017 gpstate:mdw:gpadmin-[INFO]:-   Status
+
+
+
+5、查看镜象节点状态
+[gpadmin@mdw ~]$  gpstate -m
+20170324:12:56:45:051196 gpstate:mdw:gpadmin-[INFO]:-Starting gpstate with args: -m
+20170324:12:56:45:051196 gpstate:mdw:gpadmin-[INFO]:-local Greenplum Version: 'postgres (Greenplum Database) 5.0.0-alpha.0+dev.212.gb533bcb build dev'
+20170324:12:56:45:051196 gpstate:mdw:gpadmin-[INFO]:-master Greenplum Version: 'PostgreSQL 8.3.23 (Greenplum Database 5.0.0-alpha.0+dev.212.gb533bcb build dev) on x86_64-pc-linux-gnu, compiled by GCC gcc (GCC) 4.8.5 20150623 (Red Hat 4.8.5-11) compiled on Mar 24 2017 06:48:28'
+20170324:12:56:45:051196 gpstate:mdw:gpadmin-[INFO]:-Obtaining Segment details from master...
+20170324:12:56:45:051196 gpstate:mdw:gpadmin-[INFO]:--------------------------------------------------------------
+20170324:12:56:45:051196 gpstate:mdw:gpadmin-[INFO]:--Current GPDB mirror list and status
+20170324:12:56:45:051196 gpstate:mdw:gpadmin-[INFO]:--Type = Spread
+20170324:12:56:45:051196 gpstate:mdw:gpadmin-[INFO]:--------------------------------------------------------------
+20170324:12:56:45:051196 gpstate:mdw:gpadmin-[INFO]:-   Mirror   Datadir                 Port    Status              Data Status    
+20170324:12:56:45:051196 gpstate:mdw:gpadmin-[INFO]:-   sdw02    /gpdata/mirror/gpseg0   41000   Acting as Primary   Synchronized
+20170324:12:56:45:051196 gpstate:mdw:gpadmin-[INFO]:-   sdw03    /gpdata/mirror/gpseg1   41000   Passive             Synchronized
+20170324:12:56:45:051196 gpstate:mdw:gpadmin-[INFO]:-   sdw01    /gpdata/mirror/gpseg2   41000   Passive             Synchronized
+20170324:12:56:45:051196 gpstate:mdw:gpadmin-[INFO]:--------------------------------------------------------------
+20170324:12:56:45:051196 gpstate:mdw:gpadmin-[WARNING]:-1 segment(s) configured as mirror(s) are acting as primaries
+[gpadmin@mdw ~]$ 
+
+
+6、重启将现在以前故障节点恢复，
+
+[gpadmin@mdw ~]$ gpstop -M fast
+20170324:12:57:40:051244 gpstop:mdw:gpadmin-[INFO]:-Starting gpstop with args: -M fast
+20170324:12:57:40:051244 gpstop:mdw:gpadmin-[INFO]:-Gathering information and validating the environment...
+20170324:12:57:40:051244 gpstop:mdw:gpadmin-[INFO]:-Obtaining Greenplum Master catalog information
+20170324:12:57:40:051244 gpstop:mdw:gpadmin-[INFO]:-Obtaining Segment details from master...
+20170324:12:57:40:051244 gpstop:mdw:gpadmin-[INFO]:-Greenplum Version: 'postgres (Greenplum Database) 5.0.0-alpha.0+dev.212.gb533bcb build dev'
+20170324:12:57:40:051244 gpstop:mdw:gpadmin-[INFO]:---------------------------------------------
+20170324:12:57:40:051244 gpstop:mdw:gpadmin-[INFO]:-Master instance parameters
+20170324:12:57:40:051244 gpstop:mdw:gpadmin-[INFO]:---------------------------------------------
+20170324:12:57:40:051244 gpstop:mdw:gpadmin-[INFO]:-   Master Greenplum instance process active PID   = 47283
+20170324:12:57:40:051244 gpstop:mdw:gpadmin-[INFO]:-   Database                                       = template1
+20170324:12:57:40:051244 gpstop:mdw:gpadmin-[INFO]:-   Master port                                    = 5432
+20170324:12:57:40:051244 gpstop:mdw:gpadmin-[INFO]:-   Master directory                               = /gpmaster/gpseg-1
+20170324:12:57:40:051244 gpstop:mdw:gpadmin-[INFO]:-   Shutdown mode                                  = fast
+20170324:12:57:40:051244 gpstop:mdw:gpadmin-[INFO]:-   Timeout                                        = 120
+20170324:12:57:40:051244 gpstop:mdw:gpadmin-[INFO]:-   Shutdown Master standby host                   = On
+20170324:12:57:40:051244 gpstop:mdw:gpadmin-[INFO]:---------------------------------------------
+20170324:12:57:40:051244 gpstop:mdw:gpadmin-[INFO]:-Segment instances that will be shutdown:
+20170324:12:57:40:051244 gpstop:mdw:gpadmin-[INFO]:---------------------------------------------
+20170324:12:57:40:051244 gpstop:mdw:gpadmin-[INFO]:-   Host    Datadir                 Port    Status
+20170324:12:57:40:051244 gpstop:mdw:gpadmin-[INFO]:-   sdw02   /gpdata/mirror/gpseg0   41000   u
+20170324:12:57:40:051244 gpstop:mdw:gpadmin-[INFO]:-   sdw01   /gpdata/gpseg0          40000   u
+20170324:12:57:40:051244 gpstop:mdw:gpadmin-[INFO]:-   sdw02   /gpdata/gpseg1          40000   u
+20170324:12:57:40:051244 gpstop:mdw:gpadmin-[INFO]:-   sdw03   /gpdata/mirror/gpseg1   41000   u
+20170324:12:57:40:051244 gpstop:mdw:gpadmin-[INFO]:-   sdw03   /gpdata/gpseg2          40000   u
+20170324:12:57:40:051244 gpstop:mdw:gpadmin-[INFO]:-   sdw01   /gpdata/mirror/gpseg2   41000   u
+
+Continue with Greenplum instance shutdown Yy|Nn (default=N):
+> y
+20170324:12:57:41:051244 gpstop:mdw:gpadmin-[INFO]:-There are 0 connections to the database
+20170324:12:57:41:051244 gpstop:mdw:gpadmin-[INFO]:-Commencing Master instance shutdown with mode='fast'
+20170324:12:57:41:051244 gpstop:mdw:gpadmin-[INFO]:-Master host=mdw
+20170324:12:57:41:051244 gpstop:mdw:gpadmin-[INFO]:-Detected 0 connections to database
+20170324:12:57:41:051244 gpstop:mdw:gpadmin-[INFO]:-Using standard WAIT mode of 120 seconds
+20170324:12:57:41:051244 gpstop:mdw:gpadmin-[INFO]:-Commencing Master instance shutdown with mode=fast
+20170324:12:57:41:051244 gpstop:mdw:gpadmin-[INFO]:-Master segment instance directory=/gpmaster/gpseg-1
+20170324:12:57:42:051244 gpstop:mdw:gpadmin-[INFO]:-Attempting forceful termination of any leftover master process
+20170324:12:57:42:051244 gpstop:mdw:gpadmin-[INFO]:-Terminating processes for segment /gpmaster/gpseg-1
+20170324:12:57:42:051244 gpstop:mdw:gpadmin-[INFO]:-Stopping master standby host sdw03 mode=fast
+20170324:12:57:44:051244 gpstop:mdw:gpadmin-[INFO]:-Successfully shutdown standby process on sdw03
+20170324:12:57:44:051244 gpstop:mdw:gpadmin-[INFO]:-Commencing parallel primary segment instance shutdown, please wait...
+20170324:12:57:44:051244 gpstop:mdw:gpadmin-[INFO]:-0.00% of jobs completed
+20170324:12:57:54:051244 gpstop:mdw:gpadmin-[INFO]:-0.00% of jobs completed
+20170324:12:58:04:051244 gpstop:mdw:gpadmin-[INFO]:-100.00% of jobs completed
+20170324:12:58:04:051244 gpstop:mdw:gpadmin-[INFO]:-Commencing parallel mirror segment instance shutdown, please wait...
+20170324:12:58:04:051244 gpstop:mdw:gpadmin-[INFO]:-0.00% of jobs completed
+20170324:12:58:14:051244 gpstop:mdw:gpadmin-[INFO]:-100.00% of jobs completed
+20170324:12:58:14:051244 gpstop:mdw:gpadmin-[INFO]:-----------------------------------------------------
+20170324:12:58:14:051244 gpstop:mdw:gpadmin-[INFO]:-   Segments stopped successfully      = 6
+20170324:12:58:14:051244 gpstop:mdw:gpadmin-[INFO]:-   Segments with errors during stop   = 0
+20170324:12:58:14:051244 gpstop:mdw:gpadmin-[INFO]:-----------------------------------------------------
+20170324:12:58:14:051244 gpstop:mdw:gpadmin-[INFO]:-Successfully shutdown 6 of 6 segment instances 
+20170324:12:58:14:051244 gpstop:mdw:gpadmin-[INFO]:-Database successfully shutdown with no errors reported
+20170324:12:58:14:051244 gpstop:mdw:gpadmin-[INFO]:-Cleaning up leftover gpmmon process
+20170324:12:58:14:051244 gpstop:mdw:gpadmin-[INFO]:-No leftover gpmmon process found
+20170324:12:58:14:051244 gpstop:mdw:gpadmin-[INFO]:-Cleaning up leftover gpsmon processes
+20170324:12:58:14:051244 gpstop:mdw:gpadmin-[INFO]:-No leftover gpsmon processes on some hosts. not attempting forceful termination on these hosts
+20170324:12:58:14:051244 gpstop:mdw:gpadmin-[INFO]:-Cleaning up leftover shared memory
+[gpadmin@mdw ~]$ gpstart 
+20170324:13:00:04:051360 gpstart:mdw:gpadmin-[INFO]:-Starting gpstart with args: 
+20170324:13:00:04:051360 gpstart:mdw:gpadmin-[INFO]:-Gathering information and validating the environment...
+20170324:13:00:04:051360 gpstart:mdw:gpadmin-[INFO]:-Greenplum Binary Version: 'postgres (Greenplum Database) 5.0.0-alpha.0+dev.212.gb533bcb build dev'
+20170324:13:00:04:051360 gpstart:mdw:gpadmin-[INFO]:-Greenplum Catalog Version: '301703131'
+20170324:13:00:04:051360 gpstart:mdw:gpadmin-[INFO]:-Starting Master instance in admin mode
+20170324:13:00:05:051360 gpstart:mdw:gpadmin-[INFO]:-Obtaining Greenplum Master catalog information
+20170324:13:00:05:051360 gpstart:mdw:gpadmin-[INFO]:-Obtaining Segment details from master...
+20170324:13:00:05:051360 gpstart:mdw:gpadmin-[INFO]:-Setting new master era
+20170324:13:00:05:051360 gpstart:mdw:gpadmin-[INFO]:-Master Started...
+20170324:13:00:05:051360 gpstart:mdw:gpadmin-[INFO]:-Master start noticed recovered segments, updating configuration to rebalance.
+20170324:13:00:05:051360 gpstart:mdw:gpadmin-[INFO]:-Re-obtaining updated segment details from master...
+20170324:13:00:05:051360 gpstart:mdw:gpadmin-[INFO]:-Shutting down master
+20170324:13:00:06:051360 gpstart:mdw:gpadmin-[INFO]:---------------------------
+20170324:13:00:06:051360 gpstart:mdw:gpadmin-[INFO]:-Master instance parameters
+20170324:13:00:06:051360 gpstart:mdw:gpadmin-[INFO]:---------------------------
+20170324:13:00:06:051360 gpstart:mdw:gpadmin-[INFO]:-Database                 = template1
+20170324:13:00:06:051360 gpstart:mdw:gpadmin-[INFO]:-Master Port              = 5432
+20170324:13:00:06:051360 gpstart:mdw:gpadmin-[INFO]:-Master directory         = /gpmaster/gpseg-1
+20170324:13:00:06:051360 gpstart:mdw:gpadmin-[INFO]:-Timeout                  = 600 seconds
+20170324:13:00:06:051360 gpstart:mdw:gpadmin-[INFO]:-Master standby start     = On
+20170324:13:00:06:051360 gpstart:mdw:gpadmin-[INFO]:---------------------------------------
+20170324:13:00:06:051360 gpstart:mdw:gpadmin-[INFO]:-Segment instances that will be started
+20170324:13:00:06:051360 gpstart:mdw:gpadmin-[INFO]:---------------------------------------
+20170324:13:00:06:051360 gpstart:mdw:gpadmin-[INFO]:-   Host    Datadir                 Port    Role
+20170324:13:00:06:051360 gpstart:mdw:gpadmin-[INFO]:-   sdw01   /gpdata/gpseg0          40000   Primary
+20170324:13:00:06:051360 gpstart:mdw:gpadmin-[INFO]:-   sdw02   /gpdata/mirror/gpseg0   41000   Mirror
+20170324:13:00:06:051360 gpstart:mdw:gpadmin-[INFO]:-   sdw02   /gpdata/gpseg1          40000   Primary
+20170324:13:00:06:051360 gpstart:mdw:gpadmin-[INFO]:-   sdw03   /gpdata/mirror/gpseg1   41000   Mirror
+20170324:13:00:06:051360 gpstart:mdw:gpadmin-[INFO]:-   sdw03   /gpdata/gpseg2          40000   Primary
+20170324:13:00:06:051360 gpstart:mdw:gpadmin-[INFO]:-   sdw01   /gpdata/mirror/gpseg2   41000   Mirror
+
+Continue with Greenplum instance startup Yy|Nn (default=N):
+> y
+20170324:13:00:08:051360 gpstart:mdw:gpadmin-[INFO]:-Commencing parallel primary and mirror segment instance startup, please wait...
+... 
+20170324:13:00:11:051360 gpstart:mdw:gpadmin-[INFO]:-Process results...
+20170324:13:00:11:051360 gpstart:mdw:gpadmin-[INFO]:-----------------------------------------------------
+20170324:13:00:11:051360 gpstart:mdw:gpadmin-[INFO]:-   Successful segment starts                                            = 6
+20170324:13:00:11:051360 gpstart:mdw:gpadmin-[INFO]:-   Failed segment starts                                                = 0
+20170324:13:00:11:051360 gpstart:mdw:gpadmin-[INFO]:-   Skipped segment starts (segments are marked down in configuration)   = 0
+20170324:13:00:11:051360 gpstart:mdw:gpadmin-[INFO]:-----------------------------------------------------
+20170324:13:00:11:051360 gpstart:mdw:gpadmin-[INFO]:-
+20170324:13:00:11:051360 gpstart:mdw:gpadmin-[INFO]:-Successfully started 6 of 6 segment instances 
+20170324:13:00:11:051360 gpstart:mdw:gpadmin-[INFO]:-----------------------------------------------------
+20170324:13:00:11:051360 gpstart:mdw:gpadmin-[INFO]:-Starting Master instance mdw directory /gpmaster/gpseg-1 
+20170324:13:00:12:051360 gpstart:mdw:gpadmin-[INFO]:-Command pg_ctl reports Master mdw instance active
+20170324:13:00:12:051360 gpstart:mdw:gpadmin-[INFO]:-Starting standby master
+20170324:13:00:12:051360 gpstart:mdw:gpadmin-[INFO]:-Checking if standby master is running on host: sdw03  in directory: /gpmaster/gpseg-1
+20170324:13:00:14:051360 gpstart:mdw:gpadmin-[INFO]:-Database successfully started
+
+7、查看镜象节点状态
+[gpadmin@mdw ~]$  gpstate -m
+20170324:13:00:20:051463 gpstate:mdw:gpadmin-[INFO]:-Starting gpstate with args: -m
+20170324:13:00:20:051463 gpstate:mdw:gpadmin-[INFO]:-local Greenplum Version: 'postgres (Greenplum Database) 5.0.0-alpha.0+dev.212.gb533bcb build dev'
+20170324:13:00:20:051463 gpstate:mdw:gpadmin-[INFO]:-master Greenplum Version: 'PostgreSQL 8.3.23 (Greenplum Database 5.0.0-alpha.0+dev.212.gb533bcb build dev) on x86_64-pc-linux-gnu, compiled by GCC gcc (GCC) 4.8.5 20150623 (Red Hat 4.8.5-11) compiled on Mar 24 2017 06:48:28'
+20170324:13:00:20:051463 gpstate:mdw:gpadmin-[INFO]:-Obtaining Segment details from master...
+20170324:13:00:20:051463 gpstate:mdw:gpadmin-[INFO]:--------------------------------------------------------------
+20170324:13:00:20:051463 gpstate:mdw:gpadmin-[INFO]:--Current GPDB mirror list and status
+20170324:13:00:20:051463 gpstate:mdw:gpadmin-[INFO]:--Type = Spread
+20170324:13:00:20:051463 gpstate:mdw:gpadmin-[INFO]:--------------------------------------------------------------
+20170324:13:00:20:051463 gpstate:mdw:gpadmin-[INFO]:-   Mirror   Datadir                 Port    Status    Data Status    
+20170324:13:00:20:051463 gpstate:mdw:gpadmin-[INFO]:-   sdw02    /gpdata/mirror/gpseg0   41000   Passive   Synchronized
+20170324:13:00:20:051463 gpstate:mdw:gpadmin-[INFO]:-   sdw03    /gpdata/mirror/gpseg1   41000   Passive   Synchronized
+20170324:13:00:20:051463 gpstate:mdw:gpadmin-[INFO]:-   sdw01    /gpdata/mirror/gpseg2   41000   Passive   Synchronized
+20170324:13:00:20:051463 gpstate:mdw:gpadmin-[INFO]:--------------------------------------------------------------
+[gpadmin@mdw ~]$ 
+
+
+
+
+
+四、mirror 节点故障恢复
+
+
+
+
+
+
+
+root     45397     2  0 12:54 ?        00:00:00 [kworker/1:2]
+gpadmin  45723     1  0 13:00 ?        00:00:00 /usr/local/gpdb-5.0.0/bin/postgres -D /gpdata/gpseg0 -p 40000 --gp_dbid=2 --gp_num_contents_in_cluster=3 --silent-mode=true -i -M quiescent --gp_contentid=0
+gpadmin  45724     1  0 13:00 ?        00:00:00 /usr/local/gpdb-5.0.0/bin/postgres -D /gpdata/mirror/gpseg2 -p 41000 --gp_dbid=7 --gp_num_contents_in_cluster=3 --silent-mode=true -i -M quiescent --gp_contentid=
+gpadmin  45725 45724  0 13:00 ?        00:00:00 postgres: 41000, logger process   
+gpadmin  45726 45723  0 13:00 ?        00:00:00 postgres: 40000, logger process   
+gpadmin  45732 45724  0 13:00 ?        00:00:00 postgres: 41000, mirror process   
+gpadmin  45734 45723  0 13:00 ?        00:00:00 postgres: 40000, primary process   
+gpadmin  45735 45732  0 13:00 ?        00:00:00 postgres: 41000, mirror receiver process   
+gpadmin  45736 45732  0 13:00 ?        00:00:00 postgres: 41000, mirror consumer process   
+gpadmin  45737 45732  0 13:00 ?        00:00:00 postgres: 41000, mirror consumer writer process   
+gpadmin  45738 45732  0 13:00 ?        00:00:00 postgres: 41000, mirror consumer append only process   
+gpadmin  45739 45732  0 13:00 ?        00:00:00 postgres: 41000, mirror sender ack process   
+gpadmin  45740 45734  0 13:00 ?        00:00:00 postgres: 40000, primary receiver ack process   
+gpadmin  45741 45734  0 13:00 ?        00:00:00 postgres: 40000, primary sender process   
+gpadmin  45742 45734  0 13:00 ?        00:00:00 postgres: 40000, primary consumer ack process   
+gpadmin  45743 45734  0 13:00 ?        00:00:00 postgres: 40000, primary recovery process   
+gpadmin  45746 45723  0 13:00 ?        00:00:00 postgres: 40000, stats collector process   
+gpadmin  45747 45723  0 13:00 ?        00:00:00 postgres: 40000, writer process   
+gpadmin  45748 45723  0 13:00 ?        00:00:00 postgres: 40000, checkpointer process   
+gpadmin  45749 45723  0 13:00 ?        00:00:00 postgres: 40000, sweeper process   
+gpadmin  45750 45723  0 13:00 ?        00:00:00 postgres: 40000, wal writer process   
+root     45768     2  0 13:01 ?        00:00:00 [kworker/1:1]
+root     45771 45283  0 13:01 pts/0    00:00:00 ps -ef
+
+1、终止镜象进程
+[root@sdw01 ~]# kill -9 45724
+[root@sdw01 ~]# 
+
+
+2、查看数据库
+tank=# select * from test limit 10;
+ id |               info               |          crt_time          
+----+----------------------------------+----------------------------
+  8 | 3c22afcea817ee68603f1bcec9204d61 | 2017-03-24 09:33:59.321464
+  9 | 3c22afcea817ee68603f1bcec9204d61 | 2017-03-24 09:33:59.321464
+ 10 | 3c22afcea817ee68603f1bcec9204d61 | 2017-03-24 09:33:59.321464
+ 11 | 3c22afcea817ee68603f1bcec9204d61 | 2017-03-24 09:33:59.321464
+ 12 | 3c22afcea817ee68603f1bcec9204d61 | 2017-03-24 09:33:59.321464
+ 23 | 3c22afcea817ee68603f1bcec9204d61 | 2017-03-24 09:33:59.321464
+ 24 | 3c22afcea817ee68603f1bcec9204d61 | 2017-03-24 09:33:59.321464
+ 25 | 3c22afcea817ee68603f1bcec9204d61 | 2017-03-24 09:33:59.321464
+ 26 | 3c22afcea817ee68603f1bcec9204d61 | 2017-03-24 09:33:59.321464
+ 27 | 3c22afcea817ee68603f1bcec9204d61 | 2017-03-24 09:33:59.321464
+(10 rows)
+
+Time: 240.262 ms
+tank=# 
+
+3、检查镜象状态是否为Failed
+[gpadmin@mdw ~]$  gpstate -m
+20170324:13:02:51:051619 gpstate:mdw:gpadmin-[INFO]:-Starting gpstate with args: -m
+20170324:13:02:51:051619 gpstate:mdw:gpadmin-[INFO]:-local Greenplum Version: 'postgres (Greenplum Database) 5.0.0-alpha.0+dev.212.gb533bcb build dev'
+20170324:13:02:51:051619 gpstate:mdw:gpadmin-[INFO]:-master Greenplum Version: 'PostgreSQL 8.3.23 (Greenplum Database 5.0.0-alpha.0+dev.212.gb533bcb build dev) on x86_64-pc-linux-gnu, compiled by GCC gcc (GCC) 4.8.5 20150623 (Red Hat 4.8.5-11) compiled on Mar 24 2017 06:48:28'
+20170324:13:02:51:051619 gpstate:mdw:gpadmin-[INFO]:-Obtaining Segment details from master...
+20170324:13:02:51:051619 gpstate:mdw:gpadmin-[INFO]:--------------------------------------------------------------
+20170324:13:02:51:051619 gpstate:mdw:gpadmin-[INFO]:--Current GPDB mirror list and status
+20170324:13:02:51:051619 gpstate:mdw:gpadmin-[INFO]:--Type = Spread
+20170324:13:02:51:051619 gpstate:mdw:gpadmin-[INFO]:--------------------------------------------------------------
+20170324:13:02:51:051619 gpstate:mdw:gpadmin-[INFO]:-   Mirror   Datadir                 Port    Status    Data Status    
+20170324:13:02:51:051619 gpstate:mdw:gpadmin-[INFO]:-   sdw02    /gpdata/mirror/gpseg0   41000   Passive   Synchronized
+20170324:13:02:51:051619 gpstate:mdw:gpadmin-[INFO]:-   sdw03    /gpdata/mirror/gpseg1   41000   Passive   Synchronized
+20170324:13:02:51:051619 gpstate:mdw:gpadmin-[WARNING]:-sdw01    /gpdata/mirror/gpseg2   41000   Failed                   <<<<<<<<
+20170324:13:02:51:051619 gpstate:mdw:gpadmin-[INFO]:--------------------------------------------------------------
+20170324:13:02:51:051619 gpstate:mdw:gpadmin-[WARNING]:-1 segment(s) configured as mirror(s) have failed
+[gpadmin@mdw ~]$ 
+
+
+4、恢复故障镜象节点
+[gpadmin@mdw ~]$ gprecoverseg 
+20170324:13:03:12:051651 gprecoverseg:mdw:gpadmin-[INFO]:-Starting gprecoverseg with args: 
+20170324:13:03:12:051651 gprecoverseg:mdw:gpadmin-[INFO]:-local Greenplum Version: 'postgres (Greenplum Database) 5.0.0-alpha.0+dev.212.gb533bcb build dev'
+20170324:13:03:12:051651 gprecoverseg:mdw:gpadmin-[INFO]:-master Greenplum Version: 'PostgreSQL 8.3.23 (Greenplum Database 5.0.0-alpha.0+dev.212.gb533bcb build dev) on x86_64-pc-linux-gnu, compiled by GCC gcc (GCC) 4.8.5 20150623 (Red Hat 4.8.5-11) compiled on Mar 24 2017 06:48:28'
+20170324:13:03:12:051651 gprecoverseg:mdw:gpadmin-[INFO]:-Checking if segments are ready to connect
+20170324:13:03:12:051651 gprecoverseg:mdw:gpadmin-[INFO]:-Obtaining Segment details from master...
+20170324:13:03:12:051651 gprecoverseg:mdw:gpadmin-[INFO]:-Obtaining Segment details from master...
+20170324:13:03:12:051651 gprecoverseg:mdw:gpadmin-[INFO]:-Greenplum instance recovery parameters
+20170324:13:03:12:051651 gprecoverseg:mdw:gpadmin-[INFO]:----------------------------------------------------------
+20170324:13:03:12:051651 gprecoverseg:mdw:gpadmin-[INFO]:-Recovery type              = Standard
+20170324:13:03:12:051651 gprecoverseg:mdw:gpadmin-[INFO]:----------------------------------------------------------
+20170324:13:03:12:051651 gprecoverseg:mdw:gpadmin-[INFO]:-Recovery 1 of 1
+20170324:13:03:12:051651 gprecoverseg:mdw:gpadmin-[INFO]:----------------------------------------------------------
+20170324:13:03:12:051651 gprecoverseg:mdw:gpadmin-[INFO]:-   Synchronization mode                        = Incremental
+20170324:13:03:12:051651 gprecoverseg:mdw:gpadmin-[INFO]:-   Failed instance host                        = sdw01
+20170324:13:03:12:051651 gprecoverseg:mdw:gpadmin-[INFO]:-   Failed instance address                     = sdw01
+20170324:13:03:12:051651 gprecoverseg:mdw:gpadmin-[INFO]:-   Failed instance directory                   = /gpdata/mirror/gpseg2
+20170324:13:03:12:051651 gprecoverseg:mdw:gpadmin-[INFO]:-   Failed instance port                        = 41000
+20170324:13:03:12:051651 gprecoverseg:mdw:gpadmin-[INFO]:-   Failed instance replication port            = 42000
+20170324:13:03:12:051651 gprecoverseg:mdw:gpadmin-[INFO]:-   Recovery Source instance host               = sdw03
+20170324:13:03:12:051651 gprecoverseg:mdw:gpadmin-[INFO]:-   Recovery Source instance address            = sdw03
+20170324:13:03:12:051651 gprecoverseg:mdw:gpadmin-[INFO]:-   Recovery Source instance directory          = /gpdata/gpseg2
+20170324:13:03:12:051651 gprecoverseg:mdw:gpadmin-[INFO]:-   Recovery Source instance port               = 40000
+20170324:13:03:12:051651 gprecoverseg:mdw:gpadmin-[INFO]:-   Recovery Source instance replication port   = 43000
+20170324:13:03:12:051651 gprecoverseg:mdw:gpadmin-[INFO]:-   Recovery Target                             = in-place
+20170324:13:03:12:051651 gprecoverseg:mdw:gpadmin-[INFO]:----------------------------------------------------------
+
+Continue with segment recovery procedure Yy|Nn (default=N):
+> y //输入Y
+
+20170324:13:03:17:051651 gprecoverseg:mdw:gpadmin-[INFO]:-1 segment(s) to recover
+20170324:13:03:17:051651 gprecoverseg:mdw:gpadmin-[INFO]:-Ensuring 1 failed segment(s) are stopped
+ 
+20170324:13:03:17:051651 gprecoverseg:mdw:gpadmin-[INFO]:-Ensuring that shared memory is cleaned up for stopped segments
+updating flat files
+20170324:13:03:18:051651 gprecoverseg:mdw:gpadmin-[INFO]:-Updating configuration with new mirrors
+20170324:13:03:18:051651 gprecoverseg:mdw:gpadmin-[INFO]:-Updating mirrors
+. 
+20170324:13:03:19:051651 gprecoverseg:mdw:gpadmin-[INFO]:-Starting mirrors
+20170324:13:03:19:051651 gprecoverseg:mdw:gpadmin-[INFO]:-Commencing parallel primary and mirror segment instance startup, please wait...
+.. 
+20170324:13:03:21:051651 gprecoverseg:mdw:gpadmin-[INFO]:-Process results...
+20170324:13:03:21:051651 gprecoverseg:mdw:gpadmin-[INFO]:-Updating configuration to mark mirrors up
+20170324:13:03:21:051651 gprecoverseg:mdw:gpadmin-[INFO]:-Updating primaries
+20170324:13:03:21:051651 gprecoverseg:mdw:gpadmin-[INFO]:-Commencing parallel primary conversion of 1 segments, please wait...
+. 
+20170324:13:03:22:051651 gprecoverseg:mdw:gpadmin-[INFO]:-Process results...
+20170324:13:03:22:051651 gprecoverseg:mdw:gpadmin-[INFO]:-Done updating primaries
+20170324:13:03:22:051651 gprecoverseg:mdw:gpadmin-[INFO]:-******************************************************************
+20170324:13:03:22:051651 gprecoverseg:mdw:gpadmin-[INFO]:-Updating segments for resynchronization is completed.
+20170324:13:03:22:051651 gprecoverseg:mdw:gpadmin-[INFO]:-For segments updated successfully, resynchronization will continue in the background.
+20170324:13:03:22:051651 gprecoverseg:mdw:gpadmin-[INFO]:-
+20170324:13:03:22:051651 gprecoverseg:mdw:gpadmin-[INFO]:-Use  gpstate -s  to check the resynchronization progress.
+20170324:13:03:22:051651 gprecoverseg:mdw:gpadmin-[INFO]:-******************************************************************
+[gpadmin@mdw ~]$ 
+
+
+
+5、检查镜象节点状态是否为Resynchronizing
+[gpadmin@mdw ~]$  gpstate -m
+20170324:13:03:53:051877 gpstate:mdw:gpadmin-[INFO]:-Starting gpstate with args: -m
+20170324:13:03:53:051877 gpstate:mdw:gpadmin-[INFO]:-local Greenplum Version: 'postgres (Greenplum Database) 5.0.0-alpha.0+dev.212.gb533bcb build dev'
+20170324:13:03:53:051877 gpstate:mdw:gpadmin-[INFO]:-master Greenplum Version: 'PostgreSQL 8.3.23 (Greenplum Database 5.0.0-alpha.0+dev.212.gb533bcb build dev) on x86_64-pc-linux-gnu, compiled by GCC gcc (GCC) 4.8.5 20150623 (Red Hat 4.8.5-11) compiled on Mar 24 2017 06:48:28'
+20170324:13:03:53:051877 gpstate:mdw:gpadmin-[INFO]:-Obtaining Segment details from master...
+20170324:13:03:53:051877 gpstate:mdw:gpadmin-[INFO]:--------------------------------------------------------------
+20170324:13:03:53:051877 gpstate:mdw:gpadmin-[INFO]:--Current GPDB mirror list and status
+20170324:13:03:53:051877 gpstate:mdw:gpadmin-[INFO]:--Type = Spread
+20170324:13:03:53:051877 gpstate:mdw:gpadmin-[INFO]:--------------------------------------------------------------
+20170324:13:03:53:051877 gpstate:mdw:gpadmin-[INFO]:-   Mirror   Datadir                 Port    Status    Data Status       
+20170324:13:03:53:051877 gpstate:mdw:gpadmin-[INFO]:-   sdw02    /gpdata/mirror/gpseg0   41000   Passive   Synchronized
+20170324:13:03:53:051877 gpstate:mdw:gpadmin-[INFO]:-   sdw03    /gpdata/mirror/gpseg1   41000   Passive   Synchronized
+20170324:13:03:53:051877 gpstate:mdw:gpadmin-[INFO]:-   sdw01    /gpdata/mirror/gpseg2   41000   Passive   Resynchronizing
+20170324:13:03:53:051877 gpstate:mdw:gpadmin-[INFO]:--------------------------------------------------------------
+[gpadmin@mdw ~]$ 
+
+
+6、镜象同步成功Synchronized
+
+[gpadmin@mdw ~]$  gpstate -m
+20170324:13:04:34:051925 gpstate:mdw:gpadmin-[INFO]:-Starting gpstate with args: -m
+20170324:13:04:34:051925 gpstate:mdw:gpadmin-[INFO]:-local Greenplum Version: 'postgres (Greenplum Database) 5.0.0-alpha.0+dev.212.gb533bcb build dev'
+20170324:13:04:34:051925 gpstate:mdw:gpadmin-[INFO]:-master Greenplum Version: 'PostgreSQL 8.3.23 (Greenplum Database 5.0.0-alpha.0+dev.212.gb533bcb build dev) on x86_64-pc-linux-gnu, compiled by GCC gcc (GCC) 4.8.5 20150623 (Red Hat 4.8.5-11) compiled on Mar 24 2017 06:48:28'
+20170324:13:04:34:051925 gpstate:mdw:gpadmin-[INFO]:-Obtaining Segment details from master...
+20170324:13:04:34:051925 gpstate:mdw:gpadmin-[INFO]:--------------------------------------------------------------
+20170324:13:04:34:051925 gpstate:mdw:gpadmin-[INFO]:--Current GPDB mirror list and status
+20170324:13:04:34:051925 gpstate:mdw:gpadmin-[INFO]:--Type = Spread
+20170324:13:04:34:051925 gpstate:mdw:gpadmin-[INFO]:--------------------------------------------------------------
+20170324:13:04:34:051925 gpstate:mdw:gpadmin-[INFO]:-   Mirror   Datadir                 Port    Status    Data Status    
+20170324:13:04:34:051925 gpstate:mdw:gpadmin-[INFO]:-   sdw02    /gpdata/mirror/gpseg0   41000   Passive   Synchronized
+20170324:13:04:34:051925 gpstate:mdw:gpadmin-[INFO]:-   sdw03    /gpdata/mirror/gpseg1   41000   Passive   Synchronized
+20170324:13:04:34:051925 gpstate:mdw:gpadmin-[INFO]:-   sdw01    /gpdata/mirror/gpseg2   41000   Passive   Synchronized
+20170324:13:04:34:051925 gpstate:mdw:gpadmin-[INFO]:--------------------------------------------------------------
+[gpadmin@mdw ~]$ 
+
+
+
+
+
+五、主节点故障恢复测试
+
+
+1、要看master节点Standby信息
+[gpadmin@mdw ~]$ gpstate -f
+20170324:13:37:31:001352 gpstate:mdw:gpadmin-[INFO]:-Starting gpstate with args: -f
+20170324:13:37:31:001352 gpstate:mdw:gpadmin-[INFO]:-local Greenplum Version: 'postgres (Greenplum Database) 5.0.0-alpha.0+dev.212.gb533bcb build dev'
+20170324:13:37:31:001352 gpstate:mdw:gpadmin-[INFO]:-master Greenplum Version: 'PostgreSQL 8.3.23 (Greenplum Database 5.0.0-alpha.0+dev.212.gb533bcb build dev) on x86_64-pc-linux-gnu, compiled by GCC gcc (GCC) 4.8.5 20150623 (Red Hat 4.8.5-11) compiled on Mar 24 2017 06:48:28'
+20170324:13:37:31:001352 gpstate:mdw:gpadmin-[INFO]:-Obtaining Segment details from master...
+20170324:13:37:32:001352 gpstate:mdw:gpadmin-[INFO]:-Standby master details
+20170324:13:37:32:001352 gpstate:mdw:gpadmin-[INFO]:-----------------------
+20170324:13:37:32:001352 gpstate:mdw:gpadmin-[INFO]:-   Standby address          = sdw03
+20170324:13:37:32:001352 gpstate:mdw:gpadmin-[INFO]:-   Standby data directory   = /gpmaster/gpseg-1
+20170324:13:37:32:001352 gpstate:mdw:gpadmin-[INFO]:-   Standby port             = 5432
+20170324:13:37:32:001352 gpstate:mdw:gpadmin-[INFO]:-   Standby PID              = 1114
+20170324:13:37:32:001352 gpstate:mdw:gpadmin-[INFO]:-   Standby status           = Standby host passive
+20170324:13:37:32:001352 gpstate:mdw:gpadmin-[INFO]:--------------------------------------------------------------
+20170324:13:37:32:001352 gpstate:mdw:gpadmin-[INFO]:--pg_stat_replication
+20170324:13:37:32:001352 gpstate:mdw:gpadmin-[INFO]:--------------------------------------------------------------
+20170324:13:37:32:001352 gpstate:mdw:gpadmin-[INFO]:--WAL Sender State: streaming
+20170324:13:37:32:001352 gpstate:mdw:gpadmin-[INFO]:--Sync state: sync
+20170324:13:37:32:001352 gpstate:mdw:gpadmin-[INFO]:--Sent Location: 0/C07DED0
+20170324:13:37:32:001352 gpstate:mdw:gpadmin-[INFO]:--Flush Location: 0/C07DED0
+20170324:13:37:32:001352 gpstate:mdw:gpadmin-[INFO]:--Replay Location: 0/C07DED0
+20170324:13:37:32:001352 gpstate:mdw:gpadmin-[INFO]:--------------------------------------------------------------
+[gpadmin@mdw ~]$ 
+
+2、停止master节点
+[gpadmin@mdw ~]$ gpstop -m
+20170324:13:39:08:001407 gpstop:mdw:gpadmin-[INFO]:-Starting gpstop with args: -m
+20170324:13:39:08:001407 gpstop:mdw:gpadmin-[INFO]:-Gathering information and validating the environment...
+20170324:13:39:08:001407 gpstop:mdw:gpadmin-[INFO]:-Obtaining Greenplum Master catalog information
+20170324:13:39:08:001407 gpstop:mdw:gpadmin-[INFO]:-Obtaining Segment details from master...
+20170324:13:39:08:001407 gpstop:mdw:gpadmin-[INFO]:-Greenplum Version: 'postgres (Greenplum Database) 5.0.0-alpha.0+dev.212.gb533bcb build dev'
+
+Continue with master-only shutdown Yy|Nn (default=N):
+> y
+20170324:13:39:11:001407 gpstop:mdw:gpadmin-[INFO]:-There are 0 connections to the database
+20170324:13:39:11:001407 gpstop:mdw:gpadmin-[INFO]:-Commencing Master instance shutdown with mode='smart'
+20170324:13:39:11:001407 gpstop:mdw:gpadmin-[INFO]:-Master host=mdw
+20170324:13:39:11:001407 gpstop:mdw:gpadmin-[INFO]:-Commencing Master instance shutdown with mode=smart
+20170324:13:39:11:001407 gpstop:mdw:gpadmin-[INFO]:-Master segment instance directory=/gpmaster/gpseg-1
+20170324:13:39:12:001407 gpstop:mdw:gpadmin-[INFO]:-Attempting forceful termination of any leftover master process
+20170324:13:39:12:001407 gpstop:mdw:gpadmin-[INFO]:-Terminating processes for segment /gpmaster/gpseg-1
+[gpadmin@mdw ~]$ 
+
+
+
+3、在master-standby节点提升为master节点
+[root@sdw03 ~]# su - gpadmin
+Last login: Fri Mar 24 13:12:51 UTC 2017 on pts/0
+[gpadmin@sdw03 ~]$ gpactivatestandby -d $MASTER_DATA_DIRECTORY 
+20170324:13:40:11:001390 gpactivatestandby:sdw03:gpadmin-[INFO]:------------------------------------------------------
+20170324:13:40:11:001390 gpactivatestandby:sdw03:gpadmin-[INFO]:-Standby data directory    = /gpmaster/gpseg-1
+20170324:13:40:11:001390 gpactivatestandby:sdw03:gpadmin-[INFO]:-Standby port              = 5432
+20170324:13:40:11:001390 gpactivatestandby:sdw03:gpadmin-[INFO]:-Standby running           = yes
+20170324:13:40:11:001390 gpactivatestandby:sdw03:gpadmin-[INFO]:-Force standby activation  = no
+20170324:13:40:11:001390 gpactivatestandby:sdw03:gpadmin-[INFO]:------------------------------------------------------
+Do you want to continue with standby master activation? Yy|Nn (default=N):
+> y //输入Y
+20170324:13:40:13:001390 gpactivatestandby:sdw03:gpadmin-[INFO]:-found standby postmaster process
+20170324:13:40:13:001390 gpactivatestandby:sdw03:gpadmin-[INFO]:-Updating transaction files filespace flat files...
+20170324:13:40:13:001390 gpactivatestandby:sdw03:gpadmin-[INFO]:-Updating temporary files filespace flat files...
+20170324:13:40:13:001390 gpactivatestandby:sdw03:gpadmin-[INFO]:-Promoting standby...
+20170324:13:40:13:001390 gpactivatestandby:sdw03:gpadmin-[DEBUG]:-Waiting for connection...
+20170324:13:40:18:001390 gpactivatestandby:sdw03:gpadmin-[INFO]:-Standby master is promoted
+20170324:13:40:18:001390 gpactivatestandby:sdw03:gpadmin-[INFO]:-Reading current configuration...
+20170324:13:40:18:001390 gpactivatestandby:sdw03:gpadmin-[DEBUG]:-Connecting to dbname='tank'
+20170324:13:40:18:001390 gpactivatestandby:sdw03:gpadmin-[INFO]:-Writing the gp_dbid file - /gpmaster/gpseg-1/gp_dbid...
+20170324:13:40:18:001390 gpactivatestandby:sdw03:gpadmin-[INFO]:-But found an already existing file.
+20170324:13:40:18:001390 gpactivatestandby:sdw03:gpadmin-[INFO]:-Hence removed that existing file.
+20170324:13:40:18:001390 gpactivatestandby:sdw03:gpadmin-[INFO]:-Creating a new file...
+20170324:13:40:18:001390 gpactivatestandby:sdw03:gpadmin-[INFO]:-Wrote dbid: 1 to the file.
+20170324:13:40:18:001390 gpactivatestandby:sdw03:gpadmin-[INFO]:-Now marking it as read only...
+20170324:13:40:18:001390 gpactivatestandby:sdw03:gpadmin-[INFO]:-Verifying the file...
+20170324:13:40:18:001390 gpactivatestandby:sdw03:gpadmin-[INFO]:------------------------------------------------------
+20170324:13:40:18:001390 gpactivatestandby:sdw03:gpadmin-[INFO]:-The activation of the standby master has completed successfully.
+20170324:13:40:18:001390 gpactivatestandby:sdw03:gpadmin-[INFO]:-sdw03 is now the new primary master.
+20170324:13:40:18:001390 gpactivatestandby:sdw03:gpadmin-[INFO]:-You will need to update your user access mechanism to reflect
+20170324:13:40:18:001390 gpactivatestandby:sdw03:gpadmin-[INFO]:-the change of master hostname.
+20170324:13:40:18:001390 gpactivatestandby:sdw03:gpadmin-[INFO]:-Do not re-start the failed master while the fail-over master is
+20170324:13:40:18:001390 gpactivatestandby:sdw03:gpadmin-[INFO]:-operational, this could result in database corruption!
+20170324:13:40:18:001390 gpactivatestandby:sdw03:gpadmin-[INFO]:-MASTER_DATA_DIRECTORY is now /gpmaster/gpseg-1 if
+20170324:13:40:18:001390 gpactivatestandby:sdw03:gpadmin-[INFO]:-this has changed as a result of the standby master activation, remember
+20170324:13:40:18:001390 gpactivatestandby:sdw03:gpadmin-[INFO]:-to change this in any startup scripts etc, that may be configured
+20170324:13:40:18:001390 gpactivatestandby:sdw03:gpadmin-[INFO]:-to set this value.
+20170324:13:40:18:001390 gpactivatestandby:sdw03:gpadmin-[INFO]:-MASTER_PORT is now 5432, if this has changed, you
+20170324:13:40:18:001390 gpactivatestandby:sdw03:gpadmin-[INFO]:-may need to make additional configuration changes to allow access
+20170324:13:40:18:001390 gpactivatestandby:sdw03:gpadmin-[INFO]:-to the Greenplum instance.
+20170324:13:40:18:001390 gpactivatestandby:sdw03:gpadmin-[INFO]:-Refer to the Administrator Guide for instructions on how to re-activate
+20170324:13:40:18:001390 gpactivatestandby:sdw03:gpadmin-[INFO]:-the master to its previous state once it becomes available.
+20170324:13:40:18:001390 gpactivatestandby:sdw03:gpadmin-[INFO]:-Query planner statistics must be updated on all databases
+20170324:13:40:18:001390 gpactivatestandby:sdw03:gpadmin-[INFO]:-following standby master activation.
+20170324:13:40:18:001390 gpactivatestandby:sdw03:gpadmin-[INFO]:-When convenient, run ANALYZE against all user databases.
+20170324:13:40:18:001390 gpactivatestandby:sdw03:gpadmin-[INFO]:------------------------------------------------------
+[gpadmin@sdw03 ~]$
+
+
+
+4、提升主节点后原master踢出集群，即无master-standby
+[gpadmin@sdw03 ~]$ gpstate -f
+20170324:13:41:21:001516 gpstate:sdw03:gpadmin-[INFO]:-Starting gpstate with args: -f
+20170324:13:41:21:001516 gpstate:sdw03:gpadmin-[INFO]:-local Greenplum Version: 'postgres (Greenplum Database) 5.0.0-alpha.0+dev.212.gb533bcb build dev'
+20170324:13:41:22:001516 gpstate:sdw03:gpadmin-[INFO]:-master Greenplum Version: 'PostgreSQL 8.3.23 (Greenplum Database 5.0.0-alpha.0+dev.212.gb533bcb build dev) on x86_64-pc-linux-gnu, compiled by GCC gcc (GCC) 4.8.5 20150623 (Red Hat 4.8.5-11) compiled on Mar 24 2017 06:48:28'
+20170324:13:41:22:001516 gpstate:sdw03:gpadmin-[INFO]:-Obtaining Segment details from master...
+20170324:13:41:22:001516 gpstate:sdw03:gpadmin-[INFO]:-Standby master instance not configured
+20170324:13:41:22:001516 gpstate:sdw03:gpadmin-[INFO]:--------------------------------------------------------------
+20170324:13:41:22:001516 gpstate:sdw03:gpadmin-[INFO]:--pg_stat_replication
+20170324:13:41:22:001516 gpstate:sdw03:gpadmin-[INFO]:--------------------------------------------------------------
+20170324:13:41:22:001516 gpstate:sdw03:gpadmin-[INFO]:-No entries found.
+20170324:13:41:22:001516 gpstate:sdw03:gpadmin-[INFO]:--------------------------------------------------------------
+[gpadmin@sdw03 ~]$ 
+
+
+5、连接数据库查看数据
+
+[gpadmin@sdw03 ~]$ psql -d tank
+psql (8.3.23)
+Type "help" for help.
+
+tank=# select * from table test;
+ERROR:  syntax error at or near "table"
+LINE 1: select * from table test;
+                      ^
+tank=# \dt
+             List of relations
+ Schema | Name | Type  |  Owner  | Storage 
+--------+------+-------+---------+---------
+ public | test | table | gpadmin | heap
+(1 row)
+
+tank=# select * from test limit 10;
+ id |               info               |          crt_time          
+----+----------------------------------+----------------------------
+  8 | 3c22afcea817ee68603f1bcec9204d61 | 2017-03-24 09:33:59.321464
+  9 | 3c22afcea817ee68603f1bcec9204d61 | 2017-03-24 09:33:59.321464
+ 10 | 3c22afcea817ee68603f1bcec9204d61 | 2017-03-24 09:33:59.321464
+ 11 | 3c22afcea817ee68603f1bcec9204d61 | 2017-03-24 09:33:59.321464
+ 12 | 3c22afcea817ee68603f1bcec9204d61 | 2017-03-24 09:33:59.321464
+ 23 | 3c22afcea817ee68603f1bcec9204d61 | 2017-03-24 09:33:59.321464
+ 24 | 3c22afcea817ee68603f1bcec9204d61 | 2017-03-24 09:33:59.321464
+ 25 | 3c22afcea817ee68603f1bcec9204d61 | 2017-03-24 09:33:59.321464
+ 26 | 3c22afcea817ee68603f1bcec9204d61 | 2017-03-24 09:33:59.321464
+ 27 | 3c22afcea817ee68603f1bcec9204d61 | 2017-03-24 09:33:59.321464
+(10 rows)
+
+tank=# 
+
+
+六、重新恢复mdw节点
+
+drwx------ 18 gpadmin gpadmin 4096 Mar 24 13:39 gpseg-1
+
+1、删除旧数据库文件
+[gpadmin@mdw gpmaster]$ rm -rf gpseg-1/
+[gpadmin@mdw gpmaster]$ ll
+total 0
+[gpadmin@mdw gpmaster]$  
+
+
+
+
+
+2、将mdw加入master-standb（新mdw）作为standby节点
+[gpadmin@sdw03 ~]$ gpinitstandby -s mdw
+20170324:13:45:22:001750 gpinitstandby:sdw03:gpadmin-[INFO]:-Validating environment and parameters for standby initialization...
+20170324:13:45:22:001750 gpinitstandby:sdw03:gpadmin-[INFO]:-Checking for filespace directory /gpmaster/gpseg-1 on mdw
+20170324:13:45:22:001750 gpinitstandby:sdw03:gpadmin-[INFO]:------------------------------------------------------
+20170324:13:45:22:001750 gpinitstandby:sdw03:gpadmin-[INFO]:-Greenplum standby master initialization parameters
+20170324:13:45:22:001750 gpinitstandby:sdw03:gpadmin-[INFO]:------------------------------------------------------
+20170324:13:45:22:001750 gpinitstandby:sdw03:gpadmin-[INFO]:-Greenplum master hostname               = sdw03
+20170324:13:45:22:001750 gpinitstandby:sdw03:gpadmin-[INFO]:-Greenplum master data directory         = /gpmaster/gpseg-1
+20170324:13:45:22:001750 gpinitstandby:sdw03:gpadmin-[INFO]:-Greenplum master port                   = 5432
+20170324:13:45:22:001750 gpinitstandby:sdw03:gpadmin-[INFO]:-Greenplum standby master hostname       = mdw
+20170324:13:45:22:001750 gpinitstandby:sdw03:gpadmin-[INFO]:-Greenplum standby master port           = 5432
+20170324:13:45:22:001750 gpinitstandby:sdw03:gpadmin-[INFO]:-Greenplum standby master data directory = /gpmaster/gpseg-1
+20170324:13:45:22:001750 gpinitstandby:sdw03:gpadmin-[INFO]:-Greenplum update system catalog         = On
+20170324:13:45:22:001750 gpinitstandby:sdw03:gpadmin-[INFO]:------------------------------------------------------
+20170324:13:45:22:001750 gpinitstandby:sdw03:gpadmin-[INFO]:- Filespace locations
+20170324:13:45:22:001750 gpinitstandby:sdw03:gpadmin-[INFO]:------------------------------------------------------
+20170324:13:45:22:001750 gpinitstandby:sdw03:gpadmin-[INFO]:-pg_system -> /gpmaster/gpseg-1
+Do you want to continue with standby master initialization? Yy|Nn (default=N):
+> y 输入Y
+20170324:13:45:24:001750 gpinitstandby:sdw03:gpadmin-[INFO]:-Syncing Greenplum Database extensions to standby
+20170324:13:45:24:001750 gpinitstandby:sdw03:gpadmin-[INFO]:-The packages on mdw are consistent.
+20170324:13:45:24:001750 gpinitstandby:sdw03:gpadmin-[INFO]:-Adding standby master to catalog...
+20170324:13:45:24:001750 gpinitstandby:sdw03:gpadmin-[INFO]:-Database catalog updated successfully.
+20170324:13:45:24:001750 gpinitstandby:sdw03:gpadmin-[INFO]:-Updating pg_hba.conf file...
+20170324:13:45:25:001750 gpinitstandby:sdw03:gpadmin-[INFO]:-pg_hba.conf files updated successfully.
+20170324:13:45:30:001750 gpinitstandby:sdw03:gpadmin-[INFO]:-Updating filespace flat files...
+20170324:13:45:30:001750 gpinitstandby:sdw03:gpadmin-[INFO]:-Filespace flat file updated successfully.
+20170324:13:45:30:001750 gpinitstandby:sdw03:gpadmin-[INFO]:-Starting standby master
+20170324:13:45:30:001750 gpinitstandby:sdw03:gpadmin-[INFO]:-Checking if standby master is running on host: mdw  in directory: /gpmaster/gpseg-1
+20170324:13:45:31:001750 gpinitstandby:sdw03:gpadmin-[INFO]:-Cleaning up pg_hba.conf backup files...
+20170324:13:45:31:001750 gpinitstandby:sdw03:gpadmin-[INFO]:-Backup files of pg_hba.conf cleaned up successfully.
+20170324:13:45:31:001750 gpinitstandby:sdw03:gpadmin-[INFO]:-Successfully created standby master on mdw
+[gpadmin@sdw03 ~]$ 
+
+
+
+3、关机新master-sdw03
+ 
+
+
+4、重新在旧master切成主
+
+
+[gpadmin@mdw ~]$ gpactivatestandby -d $MASTER_DATA_DIRECTORY  -f
+20170324:13:50:29:001879 gpactivatestandby:mdw:gpadmin-[INFO]:------------------------------------------------------
+20170324:13:50:29:001879 gpactivatestandby:mdw:gpadmin-[INFO]:-Standby data directory    = /gpmaster/gpseg-1
+20170324:13:50:29:001879 gpactivatestandby:mdw:gpadmin-[INFO]:-Standby port              = 5432
+20170324:13:50:29:001879 gpactivatestandby:mdw:gpadmin-[INFO]:-Standby running           = yes
+20170324:13:50:29:001879 gpactivatestandby:mdw:gpadmin-[INFO]:-Force standby activation  = yes
+20170324:13:50:29:001879 gpactivatestandby:mdw:gpadmin-[INFO]:------------------------------------------------------
+Do you want to continue with standby master activation? Yy|Nn (default=N):
+> y
+20170324:13:52:42:001879 gpactivatestandby:mdw:gpadmin-[INFO]:-found standby postmaster process
+20170324:13:52:42:001879 gpactivatestandby:mdw:gpadmin-[INFO]:-Updating transaction files filespace flat files...
+20170324:13:52:42:001879 gpactivatestandby:mdw:gpadmin-[INFO]:-Updating temporary files filespace flat files...
+20170324:13:52:42:001879 gpactivatestandby:mdw:gpadmin-[INFO]:-Promoting standby...
+20170324:13:52:42:001879 gpactivatestandby:mdw:gpadmin-[DEBUG]:-Waiting for connection...
+20170324:13:52:54:001879 gpactivatestandby:mdw:gpadmin-[INFO]:-Standby master is promoted
+20170324:13:52:54:001879 gpactivatestandby:mdw:gpadmin-[INFO]:-Reading current configuration...
+20170324:13:52:54:001879 gpactivatestandby:mdw:gpadmin-[DEBUG]:-Connecting to dbname='tank'
+20170324:13:52:54:001879 gpactivatestandby:mdw:gpadmin-[INFO]:-Writing the gp_dbid file - /gpmaster/gpseg-1/gp_dbid...
+20170324:13:52:54:001879 gpactivatestandby:mdw:gpadmin-[INFO]:-But found an already existing file.
+20170324:13:52:54:001879 gpactivatestandby:mdw:gpadmin-[INFO]:-Hence removed that existing file.
+20170324:13:52:54:001879 gpactivatestandby:mdw:gpadmin-[INFO]:-Creating a new file...
+20170324:13:52:54:001879 gpactivatestandby:mdw:gpadmin-[INFO]:-Wrote dbid: 1 to the file.
+20170324:13:52:54:001879 gpactivatestandby:mdw:gpadmin-[INFO]:-Now marking it as read only...
+20170324:13:52:54:001879 gpactivatestandby:mdw:gpadmin-[INFO]:-Verifying the file...
+20170324:13:52:54:001879 gpactivatestandby:mdw:gpadmin-[INFO]:------------------------------------------------------
+20170324:13:52:54:001879 gpactivatestandby:mdw:gpadmin-[INFO]:-The activation of the standby master has completed successfully.
+20170324:13:52:54:001879 gpactivatestandby:mdw:gpadmin-[INFO]:-mdw is now the new primary master.
+20170324:13:52:54:001879 gpactivatestandby:mdw:gpadmin-[INFO]:-You will need to update your user access mechanism to reflect
+20170324:13:52:54:001879 gpactivatestandby:mdw:gpadmin-[INFO]:-the change of master hostname.
+20170324:13:52:54:001879 gpactivatestandby:mdw:gpadmin-[INFO]:-Do not re-start the failed master while the fail-over master is
+20170324:13:52:54:001879 gpactivatestandby:mdw:gpadmin-[INFO]:-operational, this could result in database corruption!
+20170324:13:52:54:001879 gpactivatestandby:mdw:gpadmin-[INFO]:-MASTER_DATA_DIRECTORY is now /gpmaster/gpseg-1 if
+20170324:13:52:54:001879 gpactivatestandby:mdw:gpadmin-[INFO]:-this has changed as a result of the standby master activation, remember
+20170324:13:52:54:001879 gpactivatestandby:mdw:gpadmin-[INFO]:-to change this in any startup scripts etc, that may be configured
+20170324:13:52:54:001879 gpactivatestandby:mdw:gpadmin-[INFO]:-to set this value.
+20170324:13:52:54:001879 gpactivatestandby:mdw:gpadmin-[INFO]:-MASTER_PORT is now 5432, if this has changed, you
+20170324:13:52:54:001879 gpactivatestandby:mdw:gpadmin-[INFO]:-may need to make additional configuration changes to allow access
+20170324:13:52:54:001879 gpactivatestandby:mdw:gpadmin-[INFO]:-to the Greenplum instance.
+20170324:13:52:54:001879 gpactivatestandby:mdw:gpadmin-[INFO]:-Refer to the Administrator Guide for instructions on how to re-activate
+20170324:13:52:54:001879 gpactivatestandby:mdw:gpadmin-[INFO]:-the master to its previous state once it becomes available.
+20170324:13:52:54:001879 gpactivatestandby:mdw:gpadmin-[INFO]:-Query planner statistics must be updated on all databases
+20170324:13:52:54:001879 gpactivatestandby:mdw:gpadmin-[INFO]:-following standby master activation.
+20170324:13:52:54:001879 gpactivatestandby:mdw:gpadmin-[INFO]:-When convenient, run ANALYZE against all user databases.
+20170324:13:52:54:001879 gpactivatestandby:mdw:gpadmin-[INFO]:------------------------------------------------------
+[gpadmin@mdw ~]$ 
+
+[gpadmin@mdw ~]$ psql -d tank -c  "ANALYZE;"
+ANALYZE
+[gpadmin@mdw ~]$
+
+
+
+5、重新同步节点及镜象数据
+
+[gpadmin@mdw ~]$ gprecoverseg 
+20170324:14:03:53:002394 gprecoverseg:mdw:gpadmin-[INFO]:-Starting gprecoverseg with args: 
+20170324:14:03:53:002394 gprecoverseg:mdw:gpadmin-[INFO]:-local Greenplum Version: 'postgres (Greenplum Database) 5.0.0-alpha.0+dev.212.gb533bcb build dev'
+20170324:14:03:53:002394 gprecoverseg:mdw:gpadmin-[INFO]:-master Greenplum Version: 'PostgreSQL 8.3.23 (Greenplum Database 5.0.0-alpha.0+dev.212.gb533bcb build dev) on x86_64-pc-linux-gnu, compiled by GCC gcc (GCC) 4.8.5 20150623 (Red Hat 4.8.5-11) compiled on Mar 24 2017 06:48:28'
+20170324:14:03:53:002394 gprecoverseg:mdw:gpadmin-[INFO]:-Checking if segments are ready to connect
+20170324:14:03:53:002394 gprecoverseg:mdw:gpadmin-[INFO]:-Obtaining Segment details from master...
+20170324:14:03:53:002394 gprecoverseg:mdw:gpadmin-[INFO]:-Obtaining Segment details from master...
+20170324:14:03:54:002394 gprecoverseg:mdw:gpadmin-[INFO]:-Greenplum instance recovery parameters
+20170324:14:03:54:002394 gprecoverseg:mdw:gpadmin-[INFO]:----------------------------------------------------------
+20170324:14:03:54:002394 gprecoverseg:mdw:gpadmin-[INFO]:-Recovery type              = Standard
+20170324:14:03:54:002394 gprecoverseg:mdw:gpadmin-[INFO]:----------------------------------------------------------
+20170324:14:03:54:002394 gprecoverseg:mdw:gpadmin-[INFO]:-Recovery 1 of 2
+20170324:14:03:54:002394 gprecoverseg:mdw:gpadmin-[INFO]:----------------------------------------------------------
+20170324:14:03:54:002394 gprecoverseg:mdw:gpadmin-[INFO]:-   Synchronization mode                        = Incremental
+20170324:14:03:54:002394 gprecoverseg:mdw:gpadmin-[INFO]:-   Failed instance host                        = sdw03
+20170324:14:03:54:002394 gprecoverseg:mdw:gpadmin-[INFO]:-   Failed instance address                     = sdw03
+20170324:14:03:54:002394 gprecoverseg:mdw:gpadmin-[INFO]:-   Failed instance directory                   = /gpdata/mirror/gpseg1
+20170324:14:03:54:002394 gprecoverseg:mdw:gpadmin-[INFO]:-   Failed instance port                        = 41000
+20170324:14:03:54:002394 gprecoverseg:mdw:gpadmin-[INFO]:-   Failed instance replication port            = 42000
+20170324:14:03:54:002394 gprecoverseg:mdw:gpadmin-[INFO]:-   Recovery Source instance host               = sdw02
+20170324:14:03:54:002394 gprecoverseg:mdw:gpadmin-[INFO]:-   Recovery Source instance address            = sdw02
+20170324:14:03:54:002394 gprecoverseg:mdw:gpadmin-[INFO]:-   Recovery Source instance directory          = /gpdata/gpseg1
+20170324:14:03:54:002394 gprecoverseg:mdw:gpadmin-[INFO]:-   Recovery Source instance port               = 40000
+20170324:14:03:54:002394 gprecoverseg:mdw:gpadmin-[INFO]:-   Recovery Source instance replication port   = 43000
+20170324:14:03:54:002394 gprecoverseg:mdw:gpadmin-[INFO]:-   Recovery Target                             = in-place
+20170324:14:03:54:002394 gprecoverseg:mdw:gpadmin-[INFO]:----------------------------------------------------------
+20170324:14:03:54:002394 gprecoverseg:mdw:gpadmin-[INFO]:-Recovery 2 of 2
+20170324:14:03:54:002394 gprecoverseg:mdw:gpadmin-[INFO]:----------------------------------------------------------
+20170324:14:03:54:002394 gprecoverseg:mdw:gpadmin-[INFO]:-   Synchronization mode                        = Incremental
+20170324:14:03:54:002394 gprecoverseg:mdw:gpadmin-[INFO]:-   Failed instance host                        = sdw03
+20170324:14:03:54:002394 gprecoverseg:mdw:gpadmin-[INFO]:-   Failed instance address                     = sdw03
+20170324:14:03:54:002394 gprecoverseg:mdw:gpadmin-[INFO]:-   Failed instance directory                   = /gpdata/gpseg2
+20170324:14:03:54:002394 gprecoverseg:mdw:gpadmin-[INFO]:-   Failed instance port                        = 40000
+20170324:14:03:54:002394 gprecoverseg:mdw:gpadmin-[INFO]:-   Failed instance replication port            = 43000
+20170324:14:03:54:002394 gprecoverseg:mdw:gpadmin-[INFO]:-   Recovery Source instance host               = sdw01
+20170324:14:03:54:002394 gprecoverseg:mdw:gpadmin-[INFO]:-   Recovery Source instance address            = sdw01
+20170324:14:03:54:002394 gprecoverseg:mdw:gpadmin-[INFO]:-   Recovery Source instance directory          = /gpdata/mirror/gpseg2
+20170324:14:03:54:002394 gprecoverseg:mdw:gpadmin-[INFO]:-   Recovery Source instance port               = 41000
+20170324:14:03:54:002394 gprecoverseg:mdw:gpadmin-[INFO]:-   Recovery Source instance replication port   = 42000
+20170324:14:03:54:002394 gprecoverseg:mdw:gpadmin-[INFO]:-   Recovery Target                             = in-place
+20170324:14:03:54:002394 gprecoverseg:mdw:gpadmin-[INFO]:----------------------------------------------------------
+
+Continue with segment recovery procedure Yy|Nn (default=N):
+> y
+20170324:14:04:41:002394 gprecoverseg:mdw:gpadmin-[INFO]:-2 segment(s) to recover
+20170324:14:04:41:002394 gprecoverseg:mdw:gpadmin-[INFO]:-Ensuring 2 failed segment(s) are stopped
+ 
+20170324:14:04:41:002394 gprecoverseg:mdw:gpadmin-[INFO]:-Ensuring that shared memory is cleaned up for stopped segments
+updating flat files
+20170324:14:04:42:002394 gprecoverseg:mdw:gpadmin-[INFO]:-Updating configuration with new mirrors
+20170324:14:04:43:002394 gprecoverseg:mdw:gpadmin-[INFO]:-Updating mirrors
+. 
+20170324:14:04:44:002394 gprecoverseg:mdw:gpadmin-[INFO]:-Starting mirrors
+20170324:14:04:44:002394 gprecoverseg:mdw:gpadmin-[INFO]:-Commencing parallel primary and mirror segment instance startup, please wait...
+... 
+20170324:14:04:47:002394 gprecoverseg:mdw:gpadmin-[INFO]:-Process results...
+20170324:14:04:47:002394 gprecoverseg:mdw:gpadmin-[INFO]:-Updating configuration to mark mirrors up
+20170324:14:04:47:002394 gprecoverseg:mdw:gpadmin-[INFO]:-Updating primaries
+20170324:14:04:47:002394 gprecoverseg:mdw:gpadmin-[INFO]:-Commencing parallel primary conversion of 2 segments, please wait...
+. 
+20170324:14:04:48:002394 gprecoverseg:mdw:gpadmin-[INFO]:-Process results...
+20170324:14:04:48:002394 gprecoverseg:mdw:gpadmin-[INFO]:-Done updating primaries
+20170324:14:04:48:002394 gprecoverseg:mdw:gpadmin-[INFO]:-******************************************************************
+20170324:14:04:48:002394 gprecoverseg:mdw:gpadmin-[INFO]:-Updating segments for resynchronization is completed.
+20170324:14:04:48:002394 gprecoverseg:mdw:gpadmin-[INFO]:-For segments updated successfully, resynchronization will continue in the background.
+20170324:14:04:48:002394 gprecoverseg:mdw:gpadmin-[INFO]:-
+20170324:14:04:48:002394 gprecoverseg:mdw:gpadmin-[INFO]:-Use  gpstate -s  to check the resynchronization progress.
+20170324:14:04:48:002394 gprecoverseg:mdw:gpadmin-[INFO]:-******************************************************************
+
+6、查看各节点状态
+[gpadmin@mdw ~]$ gpstate -s
+20170324:14:05:26:002493 gpstate:mdw:gpadmin-[INFO]:-Starting gpstate with args: -s
+20170324:14:05:26:002493 gpstate:mdw:gpadmin-[INFO]:-local Greenplum Version: 'postgres (Greenplum Database) 5.0.0-alpha.0+dev.212.gb533bcb build dev'
+20170324:14:05:26:002493 gpstate:mdw:gpadmin-[INFO]:-master Greenplum Version: 'PostgreSQL 8.3.23 (Greenplum Database 5.0.0-alpha.0+dev.212.gb533bcb build dev) on x86_64-pc-linux-gnu, compiled by GCC gcc (GCC) 4.8.5 20150623 (Red Hat 4.8.5-11) compiled on Mar 24 2017 06:48:28'
+20170324:14:05:26:002493 gpstate:mdw:gpadmin-[INFO]:-Obtaining Segment details from master...
+20170324:14:05:26:002493 gpstate:mdw:gpadmin-[INFO]:-Gathering data from segments...
+. 
+20170324:14:05:27:002493 gpstate:mdw:gpadmin-[INFO]:-----------------------------------------------------
+20170324:14:05:27:002493 gpstate:mdw:gpadmin-[INFO]:--Master Configuration & Status
+20170324:14:05:27:002493 gpstate:mdw:gpadmin-[INFO]:-----------------------------------------------------
+20170324:14:05:27:002493 gpstate:mdw:gpadmin-[INFO]:-   Master host                    = mdw
+20170324:14:05:27:002493 gpstate:mdw:gpadmin-[INFO]:-   Master postgres process ID     = 1651
+20170324:14:05:27:002493 gpstate:mdw:gpadmin-[INFO]:-   Master data directory          = /gpmaster/gpseg-1
+20170324:14:05:27:002493 gpstate:mdw:gpadmin-[INFO]:-   Master port                    = 5432
+20170324:14:05:27:002493 gpstate:mdw:gpadmin-[INFO]:-   Master current role            = dispatch
+20170324:14:05:27:002493 gpstate:mdw:gpadmin-[INFO]:-   Greenplum initsystem version   = 5.0.0-alpha.0+dev.212.gb533bcb build dev
+20170324:14:05:27:002493 gpstate:mdw:gpadmin-[INFO]:-   Greenplum current version      = PostgreSQL 8.3.23 (Greenplum Database 5.0.0-alpha.0+dev.212.gb533bcb build dev) on x86_64-pc-linux-gnu, compiled by GCC gcc (GCC) 4.8.5 20150623 (Red Hat 4.8.5-11) compiled on Mar 24 2017 06:48:28
+20170324:14:05:27:002493 gpstate:mdw:gpadmin-[INFO]:-   Postgres version               = 8.3.23
+20170324:14:05:27:002493 gpstate:mdw:gpadmin-[INFO]:-   Master standby                 = No master standby configured
+20170324:14:05:27:002493 gpstate:mdw:gpadmin-[INFO]:-----------------------------------------------------
+20170324:14:05:27:002493 gpstate:mdw:gpadmin-[INFO]:-Segment Instance Status Report
+20170324:14:05:27:002493 gpstate:mdw:gpadmin-[INFO]:-----------------------------------------------------
+20170324:14:05:27:002493 gpstate:mdw:gpadmin-[INFO]:-   Segment Info
+20170324:14:05:27:002493 gpstate:mdw:gpadmin-[INFO]:-      Hostname                                = sdw01
+20170324:14:05:27:002493 gpstate:mdw:gpadmin-[INFO]:-      Address                                 = sdw01
+20170324:14:05:27:002493 gpstate:mdw:gpadmin-[INFO]:-      Datadir                                 = /gpdata/gpseg0
+20170324:14:05:27:002493 gpstate:mdw:gpadmin-[INFO]:-      Port                                    = 40000
+20170324:14:05:27:002493 gpstate:mdw:gpadmin-[INFO]:-   Mirroring Info
+20170324:14:05:27:002493 gpstate:mdw:gpadmin-[INFO]:-      Current role                            = Primary
+20170324:14:05:27:002493 gpstate:mdw:gpadmin-[INFO]:-      Preferred role                          = Primary
+20170324:14:05:27:002493 gpstate:mdw:gpadmin-[INFO]:-      Mirror status                           = Synchronized
+20170324:14:05:27:002493 gpstate:mdw:gpadmin-[INFO]:-   Status
+20170324:14:05:27:002493 gpstate:mdw:gpadmin-[INFO]:-      PID                                     = 1022
+20170324:14:05:27:002493 gpstate:mdw:gpadmin-[INFO]:-      Configuration reports status as         = Up
+20170324:14:05:27:002493 gpstate:mdw:gpadmin-[INFO]:-      Database status                         = Up
+20170324:14:05:27:002493 gpstate:mdw:gpadmin-[INFO]:-----------------------------------------------------
+20170324:14:05:27:002493 gpstate:mdw:gpadmin-[INFO]:-   Segment Info
+20170324:14:05:27:002493 gpstate:mdw:gpadmin-[INFO]:-      Hostname                                = sdw02
+20170324:14:05:27:002493 gpstate:mdw:gpadmin-[INFO]:-      Address                                 = sdw02
+20170324:14:05:27:002493 gpstate:mdw:gpadmin-[INFO]:-      Datadir                                 = /gpdata/mirror/gpseg0
+20170324:14:05:27:002493 gpstate:mdw:gpadmin-[INFO]:-      Port                                    = 41000
+20170324:14:05:27:002493 gpstate:mdw:gpadmin-[INFO]:-   Mirroring Info
+20170324:14:05:27:002493 gpstate:mdw:gpadmin-[INFO]:-      Current role                            = Mirror
+20170324:14:05:27:002493 gpstate:mdw:gpadmin-[INFO]:-      Preferred role                          = Mirror
+20170324:14:05:27:002493 gpstate:mdw:gpadmin-[INFO]:-      Mirror status                           = Synchronized
+20170324:14:05:27:002493 gpstate:mdw:gpadmin-[INFO]:-   Status
+20170324:14:05:27:002493 gpstate:mdw:gpadmin-[INFO]:-      PID                                     = 1009
+20170324:14:05:27:002493 gpstate:mdw:gpadmin-[INFO]:-      Configuration reports status as         = Up
+20170324:14:05:27:002493 gpstate:mdw:gpadmin-[INFO]:-      Segment status                          = Up
+20170324:14:05:27:002493 gpstate:mdw:gpadmin-[INFO]:-----------------------------------------------------
+20170324:14:05:27:002493 gpstate:mdw:gpadmin-[INFO]:-   Segment Info
+20170324:14:05:27:002493 gpstate:mdw:gpadmin-[INFO]:-      Hostname                                = sdw02
+20170324:14:05:27:002493 gpstate:mdw:gpadmin-[INFO]:-      Address                                 = sdw02
+20170324:14:05:27:002493 gpstate:mdw:gpadmin-[INFO]:-      Datadir                                 = /gpdata/gpseg1
+20170324:14:05:27:002493 gpstate:mdw:gpadmin-[INFO]:-      Port                                    = 40000
+20170324:14:05:27:002493 gpstate:mdw:gpadmin-[INFO]:-   Mirroring Info
+20170324:14:05:27:002493 gpstate:mdw:gpadmin-[INFO]:-      Current role                            = Primary
+20170324:14:05:27:002493 gpstate:mdw:gpadmin-[INFO]:-      Preferred role                          = Primary
+20170324:14:05:27:002493 gpstate:mdw:gpadmin-[INFO]:-      Mirror status                           = Resynchronizing
+20170324:14:05:27:002493 gpstate:mdw:gpadmin-[INFO]:-   Change Tracking Info
+20170324:14:05:27:002493 gpstate:mdw:gpadmin-[INFO]:-      Change tracking data size               = 32.1 kB
+20170324:14:05:27:002493 gpstate:mdw:gpadmin-[INFO]:-   Resynchronization Info
+20170324:14:05:27:002493 gpstate:mdw:gpadmin-[INFO]:-      Resynchronization mode                  = Incremental
+20170324:14:05:27:002493 gpstate:mdw:gpadmin-[INFO]:-      Data synchronized                       = 8.62 MB
+20170324:14:05:27:002493 gpstate:mdw:gpadmin-[INFO]:-      Estimated total data to synchronize     = Sync complete; awaiting config change
+20170324:14:05:27:002493 gpstate:mdw:gpadmin-[INFO]:-      Estimated resync progress with mirror   = 100%
+20170324:14:05:27:002493 gpstate:mdw:gpadmin-[INFO]:-      Total resync objects                    = 0
+20170324:14:05:27:002493 gpstate:mdw:gpadmin-[INFO]:-      Objects to resync                       = 0
+20170324:14:05:27:002493 gpstate:mdw:gpadmin-[INFO]:-      Estimated resync end time               = 
+20170324:14:05:27:002493 gpstate:mdw:gpadmin-[INFO]:-   Status
+20170324:14:05:27:002493 gpstate:mdw:gpadmin-[INFO]:-      PID                                     = 1010
+20170324:14:05:27:002493 gpstate:mdw:gpadmin-[INFO]:-      Configuration reports status as         = Up
+20170324:14:05:27:002493 gpstate:mdw:gpadmin-[INFO]:-      Database status                         = Up
+20170324:14:05:27:002493 gpstate:mdw:gpadmin-[INFO]:-----------------------------------------------------
+20170324:14:05:27:002493 gpstate:mdw:gpadmin-[INFO]:-   Segment Info
+20170324:14:05:27:002493 gpstate:mdw:gpadmin-[INFO]:-      Hostname                                = sdw03
+20170324:14:05:27:002493 gpstate:mdw:gpadmin-[INFO]:-      Address                                 = sdw03
+20170324:14:05:27:002493 gpstate:mdw:gpadmin-[INFO]:-      Datadir                                 = /gpdata/mirror/gpseg1
+20170324:14:05:27:002493 gpstate:mdw:gpadmin-[INFO]:-      Port                                    = 41000
+20170324:14:05:27:002493 gpstate:mdw:gpadmin-[INFO]:-   Mirroring Info
+20170324:14:05:27:002493 gpstate:mdw:gpadmin-[INFO]:-      Current role                            = Mirror
+20170324:14:05:27:002493 gpstate:mdw:gpadmin-[INFO]:-      Preferred role                          = Mirror
+20170324:14:05:27:002493 gpstate:mdw:gpadmin-[INFO]:-      Mirror status                           = Resynchronizing
+20170324:14:05:27:002493 gpstate:mdw:gpadmin-[INFO]:-   Status
+20170324:14:05:27:002493 gpstate:mdw:gpadmin-[INFO]:-      PID                                     = 1147
+20170324:14:05:27:002493 gpstate:mdw:gpadmin-[INFO]:-      Configuration reports status as         = Up
+20170324:14:05:27:002493 gpstate:mdw:gpadmin-[INFO]:-      Segment status                          = Up
+20170324:14:05:27:002493 gpstate:mdw:gpadmin-[INFO]:-----------------------------------------------------
+20170324:14:05:27:002493 gpstate:mdw:gpadmin-[INFO]:-   Segment Info
+20170324:14:05:27:002493 gpstate:mdw:gpadmin-[INFO]:-      Hostname                                = sdw01
+20170324:14:05:27:002493 gpstate:mdw:gpadmin-[INFO]:-      Address                                 = sdw01
+20170324:14:05:27:002493 gpstate:mdw:gpadmin-[INFO]:-      Datadir                                 = /gpdata/mirror/gpseg2
+20170324:14:05:27:002493 gpstate:mdw:gpadmin-[INFO]:-      Port                                    = 41000
+20170324:14:05:27:002493 gpstate:mdw:gpadmin-[INFO]:-   Mirroring Info
+20170324:14:05:27:002493 gpstate:mdw:gpadmin-[INFO]:-      Current role                            = Primary
+20170324:14:05:27:002493 gpstate:mdw:gpadmin-[INFO]:-      Preferred role                          = Mirror
+20170324:14:05:27:002493 gpstate:mdw:gpadmin-[INFO]:-      Mirror status                           = Resynchronizing
+20170324:14:05:27:002493 gpstate:mdw:gpadmin-[INFO]:-   Change Tracking Info
+20170324:14:05:27:002493 gpstate:mdw:gpadmin-[INFO]:-      Change tracking data size               = 32.1 kB
+20170324:14:05:27:002493 gpstate:mdw:gpadmin-[INFO]:-   Resynchronization Info
+20170324:14:05:27:002493 gpstate:mdw:gpadmin-[INFO]:-      Resynchronization mode                  = Incremental
+20170324:14:05:27:002493 gpstate:mdw:gpadmin-[INFO]:-      Data synchronized                       = 8.72 MB
+20170324:14:05:27:002493 gpstate:mdw:gpadmin-[INFO]:-      Estimated total data to synchronize     = Sync complete; awaiting config change
+20170324:14:05:27:002493 gpstate:mdw:gpadmin-[INFO]:-      Estimated resync progress with mirror   = 100%
+20170324:14:05:27:002493 gpstate:mdw:gpadmin-[INFO]:-      Total resync objects                    = 0
+20170324:14:05:27:002493 gpstate:mdw:gpadmin-[INFO]:-      Objects to resync                       = 0
+20170324:14:05:27:002493 gpstate:mdw:gpadmin-[INFO]:-      Estimated resync end time               = 
+20170324:14:05:27:002493 gpstate:mdw:gpadmin-[INFO]:-   Status
+20170324:14:05:27:002493 gpstate:mdw:gpadmin-[INFO]:-      PID                                     = 1021
+20170324:14:05:27:002493 gpstate:mdw:gpadmin-[INFO]:-      Configuration reports status as         = Up
+20170324:14:05:27:002493 gpstate:mdw:gpadmin-[INFO]:-      Database status                         = Up
+20170324:14:05:27:002493 gpstate:mdw:gpadmin-[INFO]:-----------------------------------------------------
+20170324:14:05:27:002493 gpstate:mdw:gpadmin-[INFO]:-   Segment Info
+20170324:14:05:27:002493 gpstate:mdw:gpadmin-[INFO]:-      Hostname                                = sdw03
+20170324:14:05:27:002493 gpstate:mdw:gpadmin-[INFO]:-      Address                                 = sdw03
+20170324:14:05:27:002493 gpstate:mdw:gpadmin-[INFO]:-      Datadir                                 = /gpdata/gpseg2
+20170324:14:05:27:002493 gpstate:mdw:gpadmin-[INFO]:-      Port                                    = 40000
+20170324:14:05:27:002493 gpstate:mdw:gpadmin-[INFO]:-   Mirroring Info
+20170324:14:05:27:002493 gpstate:mdw:gpadmin-[INFO]:-      Current role                            = Mirror
+20170324:14:05:27:002493 gpstate:mdw:gpadmin-[INFO]:-      Preferred role                          = Primary
+20170324:14:05:27:002493 gpstate:mdw:gpadmin-[INFO]:-      Mirror status                           = Resynchronizing
+20170324:14:05:27:002493 gpstate:mdw:gpadmin-[INFO]:-   Status
+20170324:14:05:27:002493 gpstate:mdw:gpadmin-[INFO]:-      PID                                     = 1146
+20170324:14:05:27:002493 gpstate:mdw:gpadmin-[INFO]:-      Configuration reports status as         = Up
+20170324:14:05:27:002493 gpstate:mdw:gpadmin-[INFO]:-      Segment status                          = Up
+[gpadmin@mdw ~]$ 
+
+
+7、重新生成 sdw03作为master备节点
+[gpadmin@mdw ~]$ gpstate  -f
+20170324:14:07:32:002758 gpstate:mdw:gpadmin-[INFO]:-Starting gpstate with args: -f
+20170324:14:07:32:002758 gpstate:mdw:gpadmin-[INFO]:-local Greenplum Version: 'postgres (Greenplum Database) 5.0.0-alpha.0+dev.212.gb533bcb build dev'
+20170324:14:07:32:002758 gpstate:mdw:gpadmin-[INFO]:-master Greenplum Version: 'PostgreSQL 8.3.23 (Greenplum Database 5.0.0-alpha.0+dev.212.gb533bcb build dev) on x86_64-pc-linux-gnu, compiled by GCC gcc (GCC) 4.8.5 20150623 (Red Hat 4.8.5-11) compiled on Mar 24 2017 06:48:28'
+20170324:14:07:32:002758 gpstate:mdw:gpadmin-[INFO]:-Obtaining Segment details from master...
+20170324:14:07:32:002758 gpstate:mdw:gpadmin-[INFO]:-Standby master instance not configured
+20170324:14:07:32:002758 gpstate:mdw:gpadmin-[INFO]:--------------------------------------------------------------
+20170324:14:07:32:002758 gpstate:mdw:gpadmin-[INFO]:--pg_stat_replication
+20170324:14:07:32:002758 gpstate:mdw:gpadmin-[INFO]:--------------------------------------------------------------
+20170324:14:07:32:002758 gpstate:mdw:gpadmin-[INFO]:-No entries found.
+20170324:14:07:32:002758 gpstate:mdw:gpadmin-[INFO]:--------------------------------------------------------------
+[gpadmin@mdw ~]$   gpinitstandby -s sdw03
+20170324:14:08:59:002828 gpinitstandby:mdw:gpadmin-[INFO]:-Validating environment and parameters for standby initialization...
+20170324:14:08:59:002828 gpinitstandby:mdw:gpadmin-[INFO]:-Checking for filespace directory /gpmaster/gpseg-1 on sdw03
+20170324:14:08:59:002828 gpinitstandby:mdw:gpadmin-[ERROR]:-Filespace directory already exists on host sdw03
+20170324:14:08:59:002828 gpinitstandby:mdw:gpadmin-[ERROR]:-Failed to create standby
+20170324:14:08:59:002828 gpinitstandby:mdw:gpadmin-[ERROR]:-Error initializing standby master: master data directory exists
+[gpadmin@mdw ~]$   gpinitstandby -s sdw03
+20170324:14:09:41:002858 gpinitstandby:mdw:gpadmin-[INFO]:-Validating environment and parameters for standby initialization...
+20170324:14:09:41:002858 gpinitstandby:mdw:gpadmin-[INFO]:-Checking for filespace directory /gpmaster/gpseg-1 on sdw03
+20170324:14:09:41:002858 gpinitstandby:mdw:gpadmin-[INFO]:------------------------------------------------------
+20170324:14:09:41:002858 gpinitstandby:mdw:gpadmin-[INFO]:-Greenplum standby master initialization parameters
+20170324:14:09:41:002858 gpinitstandby:mdw:gpadmin-[INFO]:------------------------------------------------------
+20170324:14:09:41:002858 gpinitstandby:mdw:gpadmin-[INFO]:-Greenplum master hostname               = mdw
+20170324:14:09:41:002858 gpinitstandby:mdw:gpadmin-[INFO]:-Greenplum master data directory         = /gpmaster/gpseg-1
+20170324:14:09:41:002858 gpinitstandby:mdw:gpadmin-[INFO]:-Greenplum master port                   = 5432
+20170324:14:09:41:002858 gpinitstandby:mdw:gpadmin-[INFO]:-Greenplum standby master hostname       = sdw03
+20170324:14:09:41:002858 gpinitstandby:mdw:gpadmin-[INFO]:-Greenplum standby master port           = 5432
+20170324:14:09:41:002858 gpinitstandby:mdw:gpadmin-[INFO]:-Greenplum standby master data directory = /gpmaster/gpseg-1
+20170324:14:09:41:002858 gpinitstandby:mdw:gpadmin-[INFO]:-Greenplum update system catalog         = On
+20170324:14:09:41:002858 gpinitstandby:mdw:gpadmin-[INFO]:------------------------------------------------------
+20170324:14:09:41:002858 gpinitstandby:mdw:gpadmin-[INFO]:- Filespace locations
+20170324:14:09:41:002858 gpinitstandby:mdw:gpadmin-[INFO]:------------------------------------------------------
+20170324:14:09:41:002858 gpinitstandby:mdw:gpadmin-[INFO]:-pg_system -> /gpmaster/gpseg-1
+Do you want to continue with standby master initialization? Yy|Nn (default=N):
+> y
+20170324:14:09:43:002858 gpinitstandby:mdw:gpadmin-[INFO]:-Syncing Greenplum Database extensions to standby
+20170324:14:09:43:002858 gpinitstandby:mdw:gpadmin-[INFO]:-The packages on sdw03 are consistent.
+20170324:14:09:43:002858 gpinitstandby:mdw:gpadmin-[INFO]:-Adding standby master to catalog...
+20170324:14:09:44:002858 gpinitstandby:mdw:gpadmin-[INFO]:-Database catalog updated successfully.
+20170324:14:09:44:002858 gpinitstandby:mdw:gpadmin-[INFO]:-Updating pg_hba.conf file...
+20170324:14:09:44:002858 gpinitstandby:mdw:gpadmin-[INFO]:-pg_hba.conf files updated successfully.
+20170324:14:09:49:002858 gpinitstandby:mdw:gpadmin-[INFO]:-Updating filespace flat files...
+20170324:14:09:49:002858 gpinitstandby:mdw:gpadmin-[INFO]:-Filespace flat file updated successfully.
+20170324:14:09:49:002858 gpinitstandby:mdw:gpadmin-[INFO]:-Starting standby master
+20170324:14:09:49:002858 gpinitstandby:mdw:gpadmin-[INFO]:-Checking if standby master is running on host: sdw03  in directory: /gpmaster/gpseg-1
+20170324:14:10:03:002858 gpinitstandby:mdw:gpadmin-[INFO]:-Cleaning up pg_hba.conf backup files...
+20170324:14:10:04:002858 gpinitstandby:mdw:gpadmin-[INFO]:-Backup files of pg_hba.conf cleaned up successfully.
+20170324:14:10:04:002858 gpinitstandby:mdw:gpadmin-[INFO]:-Successfully created standby master on sdw03
+
+8、检查master备节点信息
+[gpadmin@mdw ~]$ gpstate  -f
+20170324:14:10:09:002987 gpstate:mdw:gpadmin-[INFO]:-Starting gpstate with args: -f
+20170324:14:10:09:002987 gpstate:mdw:gpadmin-[INFO]:-local Greenplum Version: 'postgres (Greenplum Database) 5.0.0-alpha.0+dev.212.gb533bcb build dev'
+20170324:14:10:09:002987 gpstate:mdw:gpadmin-[INFO]:-master Greenplum Version: 'PostgreSQL 8.3.23 (Greenplum Database 5.0.0-alpha.0+dev.212.gb533bcb build dev) on x86_64-pc-linux-gnu, compiled by GCC gcc (GCC) 4.8.5 20150623 (Red Hat 4.8.5-11) compiled on Mar 24 2017 06:48:28'
+20170324:14:10:09:002987 gpstate:mdw:gpadmin-[INFO]:-Obtaining Segment details from master...
+20170324:14:10:09:002987 gpstate:mdw:gpadmin-[INFO]:-Standby master details
+20170324:14:10:09:002987 gpstate:mdw:gpadmin-[INFO]:-----------------------
+20170324:14:10:09:002987 gpstate:mdw:gpadmin-[INFO]:-   Standby address          = sdw03
+20170324:14:10:09:002987 gpstate:mdw:gpadmin-[INFO]:-   Standby data directory   = /gpmaster/gpseg-1
+20170324:14:10:09:002987 gpstate:mdw:gpadmin-[INFO]:-   Standby port             = 5432
+20170324:14:10:09:002987 gpstate:mdw:gpadmin-[INFO]:-   Standby PID              = 1566
+20170324:14:10:09:002987 gpstate:mdw:gpadmin-[INFO]:-   Standby status           = Standby host passive
+20170324:14:10:09:002987 gpstate:mdw:gpadmin-[INFO]:--------------------------------------------------------------
+20170324:14:10:09:002987 gpstate:mdw:gpadmin-[INFO]:--pg_stat_replication
+20170324:14:10:09:002987 gpstate:mdw:gpadmin-[INFO]:--------------------------------------------------------------
+20170324:14:10:09:002987 gpstate:mdw:gpadmin-[INFO]:--WAL Sender State: streaming
+20170324:14:10:09:002987 gpstate:mdw:gpadmin-[INFO]:--Sync state: sync
+20170324:14:10:09:002987 gpstate:mdw:gpadmin-[INFO]:--Sent Location: 0/1C000000
+20170324:14:10:09:002987 gpstate:mdw:gpadmin-[INFO]:--Flush Location: 0/1C000000
+20170324:14:10:09:002987 gpstate:mdw:gpadmin-[INFO]:--Replay Location: 0/1C000000
+20170324:14:10:09:002987 gpstate:mdw:gpadmin-[INFO]:--------------------------------------------------------------
+[gpadmin@mdw ~]$ 
+
+
+
+由于备master节点故障导致gp无法启动处理
+
+1、启动master节点失败
+
+[gpadmin@mdw ~]$ gpstart 
+20170329:02:30:38:025343 gpstart:mdw:gpadmin-[INFO]:-Starting gpstart with args: 
+20170329:02:30:38:025343 gpstart:mdw:gpadmin-[INFO]:-Gathering information and validating the environment...
+20170329:02:30:38:025343 gpstart:mdw:gpadmin-[INFO]:-Greenplum Binary Version: 'postgres (Greenplum Database) 5.0.0-alpha.0+dev.266.g923109b build dev'
+20170329:02:30:38:025343 gpstart:mdw:gpadmin-[INFO]:-Greenplum Catalog Version: '301703191'
+20170329:02:30:38:025343 gpstart:mdw:gpadmin-[INFO]:-Starting Master instance in admin mode
+20170329:02:30:39:025343 gpstart:mdw:gpadmin-[INFO]:-Obtaining Greenplum Master catalog information
+20170329:02:30:39:025343 gpstart:mdw:gpadmin-[INFO]:-Obtaining Segment details from master...
+20170329:02:30:39:025343 gpstart:mdw:gpadmin-[INFO]:-Setting new master era
+20170329:02:30:39:025343 gpstart:mdw:gpadmin-[INFO]:-Master Started...
+20170329:02:30:40:025343 gpstart:mdw:gpadmin-[CRITICAL]:-Error occurred: non-zero rc: 2
+ Command was: 'ssh -o 'StrictHostKeyChecking no' mdw02 ". /usr/local/gpdb-5.0.0/greenplum_path.sh; $GPHOME/bin/pg_controldata /gpmaster50/gpseg-1"'
+rc=2, stdout='', stderr='pg_controldata: could not open file "/gpmaster50/gpseg-1/global/pg_control" for reading: No such file or directory
+'
+
+2、移除问题mdw02
+
+[gpadmin@mdw ~]$ gpinitstandby -r mdw02
+20170329:02:30:53:025380 gpinitstandby:mdw:gpadmin-[INFO]:------------------------------------------------------
+20170329:02:30:53:025380 gpinitstandby:mdw:gpadmin-[INFO]:-Warm master standby removal parameters
+20170329:02:30:53:025380 gpinitstandby:mdw:gpadmin-[INFO]:------------------------------------------------------
+20170329:02:30:53:025380 gpinitstandby:mdw:gpadmin-[INFO]:-Greenplum master hostname               = mdw
+20170329:02:30:53:025380 gpinitstandby:mdw:gpadmin-[INFO]:-Greenplum master data directory         = /gpmaster50/gpseg-1
+20170329:02:30:53:025380 gpinitstandby:mdw:gpadmin-[INFO]:-Greenplum master port                   = 5432
+20170329:02:30:53:025380 gpinitstandby:mdw:gpadmin-[INFO]:-Greenplum standby master hostname       = mdw02
+20170329:02:30:53:025380 gpinitstandby:mdw:gpadmin-[INFO]:-Greenplum standby master port           = 5432
+20170329:02:30:53:025380 gpinitstandby:mdw:gpadmin-[INFO]:-Greenplum standby master data directory = /gpmaster50/gpseg-1
+Do you want to continue with deleting the standby master? Yy|Nn (default=N):
+> y
+20170329:02:30:56:025380 gpinitstandby:mdw:gpadmin-[INFO]:-Removing standby master from catalog...
+20170329:02:30:56:025380 gpinitstandby:mdw:gpadmin-[INFO]:-Database catalog updated successfully.
+20170329:02:30:56:025380 gpinitstandby:mdw:gpadmin-[INFO]:-Removing filespace directories on standby master...
+20170329:02:30:56:025380 gpinitstandby:mdw:gpadmin-[INFO]:-Successfully removed standby master
+
+3、停止master节点
+[gpadmin@mdw ~]$ gpstop 
+20170329:02:31:02:025413 gpstop:mdw:gpadmin-[INFO]:-Starting gpstop with args: 
+20170329:02:31:02:025413 gpstop:mdw:gpadmin-[INFO]:-Gathering information and validating the environment...
+20170329:02:31:02:025413 gpstop:mdw:gpadmin-[INFO]:-Obtaining Greenplum Master catalog information
+20170329:02:31:02:025413 gpstop:mdw:gpadmin-[INFO]:-Obtaining Segment details from master...
+20170329:02:31:02:025413 gpstop:mdw:gpadmin-[INFO]:-Greenplum Version: 'postgres (Greenplum Database) 5.0.0-alpha.0+dev.266.g923109b build dev'
+20170329:02:31:02:025413 gpstop:mdw:gpadmin-[INFO]:---------------------------------------------
+20170329:02:31:02:025413 gpstop:mdw:gpadmin-[INFO]:-Master instance parameters
+20170329:02:31:02:025413 gpstop:mdw:gpadmin-[INFO]:---------------------------------------------
+20170329:02:31:02:025413 gpstop:mdw:gpadmin-[INFO]:-   Master Greenplum instance process active PID   = 25353
+20170329:02:31:02:025413 gpstop:mdw:gpadmin-[INFO]:-   Database                                       = template1
+20170329:02:31:02:025413 gpstop:mdw:gpadmin-[INFO]:-   Master port                                    = 5432
+20170329:02:31:02:025413 gpstop:mdw:gpadmin-[INFO]:-   Master directory                               = /gpmaster50/gpseg-1
+20170329:02:31:02:025413 gpstop:mdw:gpadmin-[INFO]:-   Shutdown mode                                  = smart
+20170329:02:31:02:025413 gpstop:mdw:gpadmin-[INFO]:-   Timeout                                        = 120
+20170329:02:31:02:025413 gpstop:mdw:gpadmin-[INFO]:-   Shutdown Master standby host                   = Off
+20170329:02:31:02:025413 gpstop:mdw:gpadmin-[INFO]:---------------------------------------------
+20170329:02:31:02:025413 gpstop:mdw:gpadmin-[INFO]:-Segment instances that will be shutdown:
+20170329:02:31:02:025413 gpstop:mdw:gpadmin-[INFO]:---------------------------------------------
+20170329:02:31:02:025413 gpstop:mdw:gpadmin-[INFO]:-   Host    Datadir                   Port    Status
+20170329:02:31:02:025413 gpstop:mdw:gpadmin-[INFO]:-   sdw01   /gpdata50/gpseg0          40000   u
+20170329:02:31:02:025413 gpstop:mdw:gpadmin-[INFO]:-   sdw02   /gpdata/mirror50/gpseg0   41000   u
+20170329:02:31:02:025413 gpstop:mdw:gpadmin-[INFO]:-   sdw02   /gpdata50/gpseg1          40000   u
+20170329:02:31:02:025413 gpstop:mdw:gpadmin-[INFO]:-   sdw03   /gpdata/mirror50/gpseg1   41000   u
+20170329:02:31:02:025413 gpstop:mdw:gpadmin-[INFO]:-   sdw03   /gpdata50/gpseg2          40000   u
+20170329:02:31:02:025413 gpstop:mdw:gpadmin-[INFO]:-   sdw01   /gpdata/mirror50/gpseg2   41000   u
+
+Continue with Greenplum instance shutdown Yy|Nn (default=N):
+> y
+20170329:02:31:04:025413 gpstop:mdw:gpadmin-[INFO]:-There are 0 connections to the database
+20170329:02:31:04:025413 gpstop:mdw:gpadmin-[INFO]:-Commencing Master instance shutdown with mode='smart'
+20170329:02:31:04:025413 gpstop:mdw:gpadmin-[INFO]:-Master host=mdw
+20170329:02:31:04:025413 gpstop:mdw:gpadmin-[INFO]:-Commencing Master instance shutdown with mode=smart
+20170329:02:31:04:025413 gpstop:mdw:gpadmin-[INFO]:-Master segment instance directory=/gpmaster50/gpseg-1
+20170329:02:31:05:025413 gpstop:mdw:gpadmin-[INFO]:-Attempting forceful termination of any leftover master process
+20170329:02:31:05:025413 gpstop:mdw:gpadmin-[INFO]:-Terminating processes for segment /gpmaster50/gpseg-1
+20170329:02:31:05:025413 gpstop:mdw:gpadmin-[INFO]:-No standby master host configured
+20170329:02:31:05:025413 gpstop:mdw:gpadmin-[INFO]:-Commencing parallel primary segment instance shutdown, please wait...
+20170329:02:31:05:025413 gpstop:mdw:gpadmin-[INFO]:-0.00% of jobs completed
+20170329:02:31:15:025413 gpstop:mdw:gpadmin-[INFO]:-100.00% of jobs completed
+20170329:02:31:15:025413 gpstop:mdw:gpadmin-[INFO]:-Commencing parallel mirror segment instance shutdown, please wait...
+20170329:02:31:15:025413 gpstop:mdw:gpadmin-[INFO]:-0.00% of jobs completed
+20170329:02:31:25:025413 gpstop:mdw:gpadmin-[INFO]:-100.00% of jobs completed
+20170329:02:31:25:025413 gpstop:mdw:gpadmin-[INFO]:-----------------------------------------------------
+20170329:02:31:25:025413 gpstop:mdw:gpadmin-[INFO]:-   Segments stopped successfully      = 6
+20170329:02:31:25:025413 gpstop:mdw:gpadmin-[INFO]:-   Segments with errors during stop   = 0
+20170329:02:31:25:025413 gpstop:mdw:gpadmin-[INFO]:-----------------------------------------------------
+20170329:02:31:25:025413 gpstop:mdw:gpadmin-[INFO]:-Successfully shutdown 6 of 6 segment instances 
+20170329:02:31:25:025413 gpstop:mdw:gpadmin-[INFO]:-Database successfully shutdown with no errors reported
+20170329:02:31:25:025413 gpstop:mdw:gpadmin-[INFO]:-Cleaning up leftover gpmmon process
+20170329:02:31:25:025413 gpstop:mdw:gpadmin-[INFO]:-No leftover gpmmon process found
+20170329:02:31:25:025413 gpstop:mdw:gpadmin-[INFO]:-Cleaning up leftover gpsmon processes
+20170329:02:31:25:025413 gpstop:mdw:gpadmin-[INFO]:-No leftover gpsmon processes on some hosts. not attempting forceful termination on these hosts
+20170329:02:31:25:025413 gpstop:mdw:gpadmin-[INFO]:-Cleaning up leftover shared memory
+
+4、重新启动master
+
+[gpadmin@mdw ~]$ gpstart 
+20170329:02:31:34:025522 gpstart:mdw:gpadmin-[INFO]:-Starting gpstart with args: 
+20170329:02:31:34:025522 gpstart:mdw:gpadmin-[INFO]:-Gathering information and validating the environment...
+20170329:02:31:34:025522 gpstart:mdw:gpadmin-[INFO]:-Greenplum Binary Version: 'postgres (Greenplum Database) 5.0.0-alpha.0+dev.266.g923109b build dev'
+20170329:02:31:34:025522 gpstart:mdw:gpadmin-[INFO]:-Greenplum Catalog Version: '301703191'
+20170329:02:31:34:025522 gpstart:mdw:gpadmin-[INFO]:-Starting Master instance in admin mode
+20170329:02:31:35:025522 gpstart:mdw:gpadmin-[INFO]:-Obtaining Greenplum Master catalog information
+20170329:02:31:35:025522 gpstart:mdw:gpadmin-[INFO]:-Obtaining Segment details from master...
+20170329:02:31:35:025522 gpstart:mdw:gpadmin-[INFO]:-Setting new master era
+20170329:02:31:35:025522 gpstart:mdw:gpadmin-[INFO]:-Master Started...
+20170329:02:31:35:025522 gpstart:mdw:gpadmin-[INFO]:-Shutting down master
+20170329:02:31:37:025522 gpstart:mdw:gpadmin-[INFO]:---------------------------
+20170329:02:31:37:025522 gpstart:mdw:gpadmin-[INFO]:-Master instance parameters
+20170329:02:31:37:025522 gpstart:mdw:gpadmin-[INFO]:---------------------------
+20170329:02:31:37:025522 gpstart:mdw:gpadmin-[INFO]:-Database                 = template1
+20170329:02:31:37:025522 gpstart:mdw:gpadmin-[INFO]:-Master Port              = 5432
+20170329:02:31:37:025522 gpstart:mdw:gpadmin-[INFO]:-Master directory         = /gpmaster50/gpseg-1
+20170329:02:31:37:025522 gpstart:mdw:gpadmin-[INFO]:-Timeout                  = 600 seconds
+20170329:02:31:37:025522 gpstart:mdw:gpadmin-[INFO]:-Master standby           = Off 
+20170329:02:31:37:025522 gpstart:mdw:gpadmin-[INFO]:---------------------------------------
+20170329:02:31:37:025522 gpstart:mdw:gpadmin-[INFO]:-Segment instances that will be started
+20170329:02:31:37:025522 gpstart:mdw:gpadmin-[INFO]:---------------------------------------
+20170329:02:31:37:025522 gpstart:mdw:gpadmin-[INFO]:-   Host    Datadir                   Port    Role
+20170329:02:31:37:025522 gpstart:mdw:gpadmin-[INFO]:-   sdw01   /gpdata50/gpseg0          40000   Primary
+20170329:02:31:37:025522 gpstart:mdw:gpadmin-[INFO]:-   sdw02   /gpdata/mirror50/gpseg0   41000   Mirror
+20170329:02:31:37:025522 gpstart:mdw:gpadmin-[INFO]:-   sdw02   /gpdata50/gpseg1          40000   Primary
+20170329:02:31:37:025522 gpstart:mdw:gpadmin-[INFO]:-   sdw03   /gpdata/mirror50/gpseg1   41000   Mirror
+20170329:02:31:37:025522 gpstart:mdw:gpadmin-[INFO]:-   sdw03   /gpdata50/gpseg2          40000   Primary
+20170329:02:31:37:025522 gpstart:mdw:gpadmin-[INFO]:-   sdw01   /gpdata/mirror50/gpseg2   41000   Mirror
+
+Continue with Greenplum instance startup Yy|Nn (default=N):
+> y
+20170329:02:31:39:025522 gpstart:mdw:gpadmin-[INFO]:-Commencing parallel primary and mirror segment instance startup, please wait...
+............ 
+20170329:02:31:51:025522 gpstart:mdw:gpadmin-[INFO]:-Process results...
+20170329:02:31:51:025522 gpstart:mdw:gpadmin-[INFO]:-----------------------------------------------------
+20170329:02:31:51:025522 gpstart:mdw:gpadmin-[INFO]:-   Successful segment starts                                            = 6
+20170329:02:31:51:025522 gpstart:mdw:gpadmin-[INFO]:-   Failed segment starts                                                = 0
+20170329:02:31:51:025522 gpstart:mdw:gpadmin-[INFO]:-   Skipped segment starts (segments are marked down in configuration)   = 0
+20170329:02:31:51:025522 gpstart:mdw:gpadmin-[INFO]:-----------------------------------------------------
+20170329:02:31:51:025522 gpstart:mdw:gpadmin-[INFO]:-
+20170329:02:31:51:025522 gpstart:mdw:gpadmin-[INFO]:-Successfully started 6 of 6 segment instances 
+20170329:02:31:51:025522 gpstart:mdw:gpadmin-[INFO]:-----------------------------------------------------
+20170329:02:31:51:025522 gpstart:mdw:gpadmin-[INFO]:-Starting Master instance mdw directory /gpmaster50/gpseg-1 
+20170329:02:31:52:025522 gpstart:mdw:gpadmin-[INFO]:-Command pg_ctl reports Master mdw instance active
+20170329:02:31:52:025522 gpstart:mdw:gpadmin-[WARNING]:-global name 'testurl' is not defined
+20170329:02:31:52:025522 gpstart:mdw:gpadmin-[INFO]:-No standby master configured.  skipping...
+20170329:02:31:52:025522 gpstart:mdw:gpadmin-[INFO]:-Check status of database with gpstate utility
+[gpadmin@mdw ~]$ 
+
+
+
+5、重新恢复maststandby主节点
+
+
+
+[gpadmin@mdw ~]$ gpstate -f
+20170329:02:36:47:025717 gpstate:mdw:gpadmin-[INFO]:-Starting gpstate with args: -f
+20170329:02:36:47:025717 gpstate:mdw:gpadmin-[INFO]:-local Greenplum Version: 'postgres (Greenplum Database) 5.0.0-alpha.0+dev.266.g923109b build dev'
+20170329:02:36:47:025717 gpstate:mdw:gpadmin-[INFO]:-master Greenplum Version: 'PostgreSQL 8.3.23 (Greenplum Database 5.0.0-alpha.0+dev.266.g923109b build dev) on x86_64-pc-linux-gnu, compiled by GCC gcc (GCC) 4.8.5 20150623 (Red Hat 4.8.5-11) compiled on Mar 28 2017 20:09:54'
+20170329:02:36:47:025717 gpstate:mdw:gpadmin-[INFO]:-Obtaining Segment details from master...
+20170329:02:36:47:025717 gpstate:mdw:gpadmin-[INFO]:-Standby master instance not configured
+20170329:02:36:47:025717 gpstate:mdw:gpadmin-[INFO]:--------------------------------------------------------------
+20170329:02:36:47:025717 gpstate:mdw:gpadmin-[INFO]:--pg_stat_replication
+20170329:02:36:47:025717 gpstate:mdw:gpadmin-[INFO]:--------------------------------------------------------------
+20170329:02:36:47:025717 gpstate:mdw:gpadmin-[INFO]:-No entries found.
+20170329:02:36:47:025717 gpstate:mdw:gpadmin-[INFO]:--------------------------------------------------------------
+[gpadmin@mdw ~]$ gpinitstandby -s mdw02
+20170329:02:37:04:025779 gpinitstandby:mdw:gpadmin-[INFO]:-Validating environment and parameters for standby initialization...
+20170329:02:37:04:025779 gpinitstandby:mdw:gpadmin-[INFO]:-Checking for filespace directory /gpmaster50/gpseg-1 on mdw02
+20170329:02:37:04:025779 gpinitstandby:mdw:gpadmin-[INFO]:------------------------------------------------------
+20170329:02:37:04:025779 gpinitstandby:mdw:gpadmin-[INFO]:-Greenplum standby master initialization parameters
+20170329:02:37:04:025779 gpinitstandby:mdw:gpadmin-[INFO]:------------------------------------------------------
+20170329:02:37:04:025779 gpinitstandby:mdw:gpadmin-[INFO]:-Greenplum master hostname               = mdw
+20170329:02:37:04:025779 gpinitstandby:mdw:gpadmin-[INFO]:-Greenplum master data directory         = /gpmaster50/gpseg-1
+20170329:02:37:04:025779 gpinitstandby:mdw:gpadmin-[INFO]:-Greenplum master port                   = 5432
+20170329:02:37:04:025779 gpinitstandby:mdw:gpadmin-[INFO]:-Greenplum standby master hostname       = mdw02
+20170329:02:37:04:025779 gpinitstandby:mdw:gpadmin-[INFO]:-Greenplum standby master port           = 5432
+20170329:02:37:04:025779 gpinitstandby:mdw:gpadmin-[INFO]:-Greenplum standby master data directory = /gpmaster50/gpseg-1
+20170329:02:37:04:025779 gpinitstandby:mdw:gpadmin-[INFO]:-Greenplum update system catalog         = On
+20170329:02:37:04:025779 gpinitstandby:mdw:gpadmin-[INFO]:------------------------------------------------------
+20170329:02:37:04:025779 gpinitstandby:mdw:gpadmin-[INFO]:- Filespace locations
+20170329:02:37:04:025779 gpinitstandby:mdw:gpadmin-[INFO]:------------------------------------------------------
+20170329:02:37:04:025779 gpinitstandby:mdw:gpadmin-[INFO]:-pg_system -> /gpmaster50/gpseg-1
+Do you want to continue with standby master initialization? Yy|Nn (default=N):
+> y
+20170329:02:37:06:025779 gpinitstandby:mdw:gpadmin-[INFO]:-Syncing Greenplum Database extensions to standby
+20170329:02:37:06:025779 gpinitstandby:mdw:gpadmin-[WARNING]:-Syncing of Greenplum Database extensions has failed.
+20170329:02:37:06:025779 gpinitstandby:mdw:gpadmin-[WARNING]:-Please run gppkg --clean after successful standby initialization.
+20170329:02:37:06:025779 gpinitstandby:mdw:gpadmin-[INFO]:-Adding standby master to catalog...
+20170329:02:37:06:025779 gpinitstandby:mdw:gpadmin-[INFO]:-Database catalog updated successfully.
+20170329:02:37:06:025779 gpinitstandby:mdw:gpadmin-[INFO]:-Updating pg_hba.conf file...
+20170329:02:37:08:025779 gpinitstandby:mdw:gpadmin-[INFO]:-pg_hba.conf files updated successfully.
+20170329:02:37:17:025779 gpinitstandby:mdw:gpadmin-[INFO]:-Updating filespace flat files...
+20170329:02:37:17:025779 gpinitstandby:mdw:gpadmin-[INFO]:-Filespace flat file updated successfully.
+20170329:02:37:17:025779 gpinitstandby:mdw:gpadmin-[INFO]:-Starting standby master
+20170329:02:37:17:025779 gpinitstandby:mdw:gpadmin-[INFO]:-Checking if standby master is running on host: mdw02  in directory: /gpmaster50/gpseg-1
+20170329:02:37:22:025779 gpinitstandby:mdw:gpadmin-[INFO]:-Cleaning up pg_hba.conf backup files...
+20170329:02:37:23:025779 gpinitstandby:mdw:gpadmin-[INFO]:-Backup files of pg_hba.conf cleaned up successfully.
+20170329:02:37:23:025779 gpinitstandby:mdw:gpadmin-[INFO]:-Successfully created standby master on mdw02
+[gpadmin@mdw ~]$ gpstate -f
+20170329:02:37:27:025887 gpstate:mdw:gpadmin-[INFO]:-Starting gpstate with args: -f
+20170329:02:37:28:025887 gpstate:mdw:gpadmin-[INFO]:-local Greenplum Version: 'postgres (Greenplum Database) 5.0.0-alpha.0+dev.266.g923109b build dev'
+20170329:02:37:28:025887 gpstate:mdw:gpadmin-[INFO]:-master Greenplum Version: 'PostgreSQL 8.3.23 (Greenplum Database 5.0.0-alpha.0+dev.266.g923109b build dev) on x86_64-pc-linux-gnu, compiled by GCC gcc (GCC) 4.8.5 20150623 (Red Hat 4.8.5-11) compiled on Mar 28 2017 20:09:54'
+20170329:02:37:28:025887 gpstate:mdw:gpadmin-[INFO]:-Obtaining Segment details from master...
+20170329:02:37:29:025887 gpstate:mdw:gpadmin-[INFO]:-Standby master details
+20170329:02:37:29:025887 gpstate:mdw:gpadmin-[INFO]:-----------------------
+20170329:02:37:29:025887 gpstate:mdw:gpadmin-[INFO]:-   Standby address          = mdw02
+20170329:02:37:29:025887 gpstate:mdw:gpadmin-[INFO]:-   Standby data directory   = /gpmaster50/gpseg-1
+20170329:02:37:29:025887 gpstate:mdw:gpadmin-[INFO]:-   Standby port             = 5432
+20170329:02:37:29:025887 gpstate:mdw:gpadmin-[INFO]:-   Standby PID              = 2641
+20170329:02:37:29:025887 gpstate:mdw:gpadmin-[INFO]:-   Standby status           = Standby host passive
+20170329:02:37:29:025887 gpstate:mdw:gpadmin-[INFO]:--------------------------------------------------------------
+20170329:02:37:29:025887 gpstate:mdw:gpadmin-[INFO]:--pg_stat_replication
+20170329:02:37:29:025887 gpstate:mdw:gpadmin-[INFO]:--------------------------------------------------------------
+20170329:02:37:29:025887 gpstate:mdw:gpadmin-[INFO]:--WAL Sender State: streaming
+20170329:02:37:29:025887 gpstate:mdw:gpadmin-[INFO]:--Sync state: sync
+20170329:02:37:29:025887 gpstate:mdw:gpadmin-[INFO]:--Sent Location: 0/24000000
+20170329:02:37:29:025887 gpstate:mdw:gpadmin-[INFO]:--Flush Location: 0/24000000
+20170329:02:37:29:025887 gpstate:mdw:gpadmin-[INFO]:--Replay Location: 0/24000000
+20170329:02:37:29:025887 gpstate:mdw:gpadmin-[INFO]:--------------------------------------------------------------
+[gpadmin@mdw ~]$ 

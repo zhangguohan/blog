@@ -1,0 +1,154 @@
+
+
+一、测试常用oracle函数
+
+[gpadmin@mdw ~]$ psql -d tank
+psql (8.3.23)
+Type "help" for help.
+
+tank=# select nvl(null,2);
+ERROR:  function nvl(unknown, integer) does not exist
+LINE 1: select nvl(null,2);
+               ^
+HINT:  No function matches the given name and argument types. You might need to a
+tank=# 
+
+
+二、安装orafce函数扩展
+[root@mdw orafce]# cd /root/gpdb/gpAux/extensions/orafce
+[root@mdw orafce]# export PATH=/usr/local/gpdb-5.0.0/bin:$PATH
+[root@mdw orafce]# make USE_PGXS=1
+
+ot@mdw orafce]# make USE_PGXS=1 install
+
+
+三、将编译好的orafunc.so复制到所有节点
+[root@mdw ~]#   gpscp -f /home/gpadmin/all_segs /usr/local/gpdb-5.0.0/lib/postgresql/orafunc.so =:/usr/local/gpdb-5.0.0/lib/postgresql/
+
+[root@mdw ~]#   gpscp -f /home/gpadmin/standbymaster_hosts /usr/local/gpdb-5.0.0/lib/postgresql/orafunc.so =:/usr/local/gpdb-5.0.0/lib/postgresql/
+[root@mdw ~]#
+
+ 
+四、导入orafunc函数
+[root@mdw ~]# su - gpadmin
+Last login: Thu Mar 30 23:17:06 EDT 2017 on pts/0
+[gpadmin@mdw ~]$ psql -d tank -f /usr/local/gpdb-5.0.0/share/postgresql/contrib/orafunc.sql 
+
+
+
+五、查看已经导入到oracle函数
+[gpadmin@mdw ~]$ psql -d tank
+psql (8.3.23)
+Type "help" for help.
+
+tank=# \df oracompat.*
+                                                 List of functions
+  Schema   |       Name       |     Result data type     |               Argument
+ data types               |  Type  
+-----------+------------------+--------------------------+-----------------------
+--------------------------+--------
+ oracompat | add_months       | date                     | day date, value intege
+r                         | normal
+ oracompat | bitand           | bigint                   | bigint, bigint        
+                          | normal
+ oracompat | concat           | text                     | anyarray, anyarray    
+                          | normal
+ oracompat | concat           | text                     | anyarray, text        
+                          | normal
+ oracompat | concat           | text                     | text, anyarray                                  | normal
+ oracompat | concat           | text                     | text, text                                      | normal
+ oracompat | dump             | character varying        | "any"                                           | normal
+ oracompat | dump             | character varying        | "any", integer                                  | normal
+ oracompat | instr            | integer                  | str text, patt text                             | normal
+ oracompat | instr            | integer                  | str text, patt text, start integer              | normal
+ oracompat | instr            | integer                  | str text, patt text, start integer, nth integer | normal
+ oracompat | last_day         | date                     | value date                                      | normal
+ oracompat | listagg          | text                     | text                                            | agg
+ oracompat | listagg          | text                     | text, text                                      | agg
+ oracompat | listagg1_transfn | text                     | text, text                                      | normal
+ oracompat | listagg2_transfn | text                     | text, text, text                                | normal
+ oracompat | lnnvl            | boolean                  | boolean                                         | normal
+ oracompat | months_between   | numeric                  | date1 date, date2 date                          | normal
+ oracompat | nanvl            | double precision         | double precision, double precision              | normal
+ oracompat | nanvl            | numeric                  | numeric, numeric                                | normal
+ oracompat | nanvl            | real                     | real, real                                      | normal
+ oracompat | next_day         | date                     | value date, weekday integer                     | normal
+ oracompat | next_day         | date                     | value date, weekday text                        | normal
+ oracompat | nlssort          | bytea                    | text, text                                      | normal
+ oracompat | nvl              | anyelement               | anyelement, anyelement                          | normal
+ oracompat | nvl2             | anyelement               | anyelement, anyelement, anyelement              | normal
+ oracompat | reverse          | text                     | str text                                        | normal
+ oracompat | reverse          | text                     | str text, start integer                         | normal
+ oracompat | reverse          | text                     | str text, start integer, _end integer           | normal
+ oracompat | round            | date                     | value date                                      | normal
+ oracompat | round            | date                     | value date, fmt text                            | normal
+ oracompat | round            | timestamp with time zone | value timestamp with time zone                  | normal
+ oracompat | round            | timestamp with time zone | value timestamp with time zone, fmt text        | normal
+ oracompat | substr           | text                     | str text, start integer                         | normal
+ oracompat | substr           | text                     | str text, start integer, len integer            | normal
+ oracompat | trunc            | date                     | value date                                      | normal
+ oracompat | trunc            | date                     | value date, fmt text                            | normal
+ oracompat | trunc            | timestamp with time zone | value timestamp with time zone                  | normal
+ oracompat | trunc            | timestamp with time zone | value timestamp with time zone, fmt text        | normal
+(39 rows)
+
+tank=#             
+
+
+六、添加oracompat到search_path中
+
+tank=# ALTER DATABASE tank SET search_path = "$user", public, oracompat;
+ALTER DATABASE
+tank=# 
+
+
+
+七、测试部oracle函数
+
+[gpadmin@mdw ~]$ psql -d tank
+psql (8.3.23)
+Type "help" for help.
+
+tank=#             
+ select nvl(null,8);
+ nvl 
+-----
+   8
+(1 row)
+
+tank=# 
+
+
+tank=#  select months_between(to_date('20180401', 'yyyymmdd'), to_date('20170401', 'yyyymmdd')) as months from emp;
+ months 
+--------
+     12
+     12
+(2 rows)
+
+tank=# 
+
+tank=# select concat('man','jia')||'asdf' from emp;   
+  ?column?  
+------------
+ manjiaasdf
+ manjiaasdf
+(2 rows)
+
+
+
+tank=# select last_day(to_date('2017.03.29','yyyy.mm.dd')) from emp;   
+  last_day  
+------------
+ 2017-03-31
+ 2017-03-31
+(2 rows)
+
+tank=# select last_day(to_date('2017.02.26','yyyy.mm.dd')) from emp;
+  last_day  
+------------
+ 2017-02-28
+ 2017-02-28
+(2 rows)
+
+tank=# 

@@ -1,0 +1,278 @@
+备份tank数据库
+
+[gpadmin@mdw ~]$ gp_dump tank
+20170422:11:38:31|gp_dump-[INFO]:-Read params: <empty>
+20170422:11:38:31|gp_dump-[INFO]:-Command line options analyzed.
+20170422:11:38:31|gp_dump-[INFO]:-Connecting to master database on host localhost port 5432 database tank.
+20170422:11:38:31|gp_dump-[INFO]:-Reading Greenplum Database configuration info from master database.
+20170422:11:38:31|gp_dump-[INFO]:-Preparing to dump the following segments:
+20170422:11:38:31|gp_dump-[INFO]:-Segment 2 (dbid 4)
+20170422:11:38:31|gp_dump-[INFO]:-Segment 1 (dbid 3)
+20170422:11:38:31|gp_dump-[INFO]:-Segment 0 (dbid 2)
+20170422:11:38:31|gp_dump-[INFO]:-Master (dbid 1)
+20170422:11:38:31|gp_dump-[INFO]:-Starting a transaction on master database tank.
+20170422:11:38:31|gp_dump-[INFO]:-Getting a lock on pg_class in database tank.
+20170422:11:38:31|GetTimestampKey-[INFO]:-Timestamp key is generated as it is not provided by the user.
+20170422:11:38:31|gp_dump-[INFO]:-About to spin off 4 threads with timestamp key 20170422113831
+20170422:11:38:31|gp_dump-[INFO]:-Creating thread to backup dbid 4: host sdw03 port 40000 database tank
+20170422:11:38:31|gp_dump-[INFO]:-Creating thread to backup dbid 3: host sdw02 port 40000 database tank
+20170422:11:38:31|gp_dump-[INFO]:-Creating thread to backup dbid 2: host sdw01 port 40000 database tank
+20170422:11:38:31|gp_dump-[INFO]:-Creating thread to backup dbid 1: host mdw port 5432 database tank
+20170422:11:38:31|gp_dump-[INFO]:-Waiting for remote gp_dump_agent processes to start transactions in serializable isolation level
+20170422:11:38:33|gp_dump-[INFO]:-Listening for messages from server on dbid 1 connection
+20170422:11:38:37|gp_dump-[INFO]:-Successfully launched Greenplum Database backup on dbid 1 server
+20170422:11:38:37|gp_dump-[INFO]:-backup succeeded for dbid 1 on host mdw
+20170422:11:38:40|gp_dump-[INFO]:-Listening for messages from server on dbid 3 connection
+20170422:11:38:41|gp_dump-[INFO]:-Successfully launched Greenplum Database backup on dbid 3 server
+20170422:11:38:41|gp_dump-[INFO]:-Listening for messages from server on dbid 2 connection
+20170422:11:38:43|gp_dump-[INFO]:-Successfully launched Greenplum Database backup on dbid 2 server
+20170422:11:38:43|gp_dump-[INFO]:-Listening for messages from server on dbid 4 connection
+20170422:11:38:44|gp_dump-[INFO]:-Successfully launched Greenplum Database backup on dbid 4 server
+20170422:11:38:54|gp_dump-[INFO]:-All remote gp_dump_agent processes have began transactions in serializable isolation level
+20170422:11:38:54|gp_dump-[INFO]:-Waiting for remote gp_dump_agent processes to obtain local locks on dumpable objects
+20170422:11:39:00|gp_dump-[INFO]:-All remote gp_dump_agent processes have obtains the necessary locks
+20170422:11:39:00|gp_dump-[INFO]:-Committing transaction on the master database, thereby releasing locks.
+20170422:11:39:00|gp_dump-[INFO]:-Waiting for all remote gp_dump_agent programs to finish.
+20170422:11:39:37|gp_dump-[INFO]:-backup succeeded for dbid 3 on host sdw02
+20170422:11:39:52|gp_dump-[INFO]:-backup succeeded for dbid 2 on host sdw01
+20170422:11:40:07|gp_dump-[INFO]:-backup succeeded for dbid 4 on host sdw03
+20170422:11:40:07|gp_dump-[INFO]:-All remote gp_dump_agent programs are finished.
+20170422:11:40:07|gp_dump-[INFO]:-Report results also written to /gpmaster50/gpseg-1/gp_dump_20170422113831.rpt.
+
+Greenplum Database Backup Report
+Timestamp Key: 20170422113831
+gp_dump Command Line: tank
+Pass through Command Line Options: None
+Compression Program: None
+Backup Type: Full
+
+Individual Results
+	segment 2 (dbid 4) Host sdw03 Port 40000 Database tank BackupFile /gpdata50/gpseg2/./gp_dump_2_4_20170422104200: Succeeded 
+	segment 1 (dbid 3) Host sdw02 Port 40000 Database tank BackupFile /gpdata50/gpseg1/./gp_dump_1_3_20170422104200: Succeeded 
+	segment 0 (dbid 2) Host sdw01 Port 40000 Database tank BackupFile /gpdata50/gpseg0/./gp_dump_0_2_20170422104200: Succeeded 
+	Master (dbid 1) Host mdw Port 5432 Database tank BackupFile /gpmaster50/gpseg-1/./gp_dump_-1_1_20170422104200: Succeeded 
+	Master (dbid 1) Host mdw Port 5432 Database tank BackupFile /gpmaster50/gpseg-1/./gp_dump_-1_1_20170422104200_post_data: Succeeded 
+
+gp_dump utility finished successfully.
+[gpadmin@mdw ~]$ 
+
+
+
+
+还原数据库：
+
+
+[gpadmin@mdw ~]$ gp_restore --gp-k=20170422104200 -d k1
+20170422:10:58:51|gp_restore-[INFO]:-Analyzed command line options.
+20170422:10:58:51|gp_restore-[INFO]:-Connecting to master segment on host localhost port 5432 database k1.
+20170422:10:58:51|gp_restore-[INFO]:-Reading Greenplum Database configuration info from master segment database.
+20170422:10:58:51|gp_restore-[INFO]:-Preparing to restore the following segments:
+20170422:10:58:51|gp_restore-[INFO]:-Segment 2 (dbid 4)
+20170422:10:58:51|gp_restore-[INFO]:-Segment 1 (dbid 3)
+20170422:10:58:51|gp_restore-[INFO]:-Segment 0 (dbid 2)
+20170422:10:58:51|gp_restore-[INFO]:-Master (dbid 1)
+20170422:10:58:51|gp_restore-[INFO]:-Starting to restore the master database.
+20170422:10:58:51|gp_restore-[INFO]:-Creating thread to restore master database: host mdw port 5432 database k1
+20170422:10:58:52|gp_restore-[INFO]:-Listening for messages from dbid 1 server (source) for dbid 1 restore
+20170422:10:58:52|gp_restore-[INFO]:-Successfully launched Greenplum Database restore on dbid 1 to restore dbid 1
+20170422:10:58:54|gp_restore-[INFO]:-restore started for source dbid 1, target dbid 1 on host mdw
+20170422:11:18:40|gp_restore-[INFO]:-restore succeeded for source dbid 1, target dbid 1 on host mdw
+20170422:11:18:40|gp_restore-[INFO]:-Successfully restored master database: host mdw port 5432 database k1
+20170422:11:18:40|gp_restore-[INFO]:-Creating thread to restore dbid 4 (sdw03:40000) from backup file on dbid 4 (sdw03:40000)
+20170422:11:18:40|gp_restore-[INFO]:-Creating thread to restore dbid 3 (sdw02:40000) from backup file on dbid 3 (sdw02:40000)
+20170422:11:18:40|gp_restore-[INFO]:-Creating thread to restore dbid 2 (sdw01:40000) from backup file on dbid 2 (sdw01:40000)
+20170422:11:18:40|gp_restore-[INFO]:-Waiting for all remote gp_restore_agent programs to finish.
+20170422:11:18:41|gp_restore-[INFO]:-Listening for messages from dbid 3 server (source) for dbid 3 restore
+20170422:11:18:41|gp_restore-[INFO]:-Successfully launched Greenplum Database restore on dbid 3 to restore dbid 3
+20170422:11:18:42|gp_restore-[INFO]:-Listening for messages from dbid 4 server (source) for dbid 4 restore
+20170422:11:18:42|gp_restore-[INFO]:-Successfully launched Greenplum Database restore on dbid 4 to restore dbid 4
+20170422:11:18:42|gp_restore-[INFO]:-Listening for messages from dbid 2 server (source) for dbid 2 restore
+20170422:11:18:42|gp_restore-[INFO]:-Successfully launched Greenplum Database restore on dbid 2 to restore dbid 2
+20170422:11:18:46|gp_restore-[INFO]:-restore started for source dbid 3, target dbid 3 on host sdw02
+20170422:11:18:46|gp_restore-[INFO]:-restore started for source dbid 2, target dbid 2 on host sdw01
+20170422:11:18:47|gp_restore-[INFO]:-restore started for source dbid 4, target dbid 4 on host sdw03
+20170422:11:27:56|gp_restore-[INFO]:-restore succeeded for source dbid 3, target dbid 3 on host sdw02
+20170422:11:33:05|gp_restore-[INFO]:-restore succeeded for source dbid 2, target dbid 2 on host sdw01
+20170422:11:33:20|gp_restore-[INFO]:-restore succeeded for source dbid 4, target dbid 4 on host sdw03
+20170422:11:33:22|gp_restore-[INFO]:-All remote gp_restore_agent programs are finished.
+20170422:11:33:22|gp_restore-[INFO]:-Starting to restore the master database.
+20170422:11:33:22|gp_restore-[INFO]:-Creating thread to restore master database: host mdw port 5432 database k1
+20170422:11:33:23|gp_restore-[INFO]:-Listening for messages from dbid 1 server (source) for dbid 1 restore
+20170422:11:33:23|gp_restore-[INFO]:-Successfully launched Greenplum Database restore on dbid 1 to restore dbid 1
+20170422:11:33:26|gp_restore-[INFO]:-restore started for source dbid 1, target dbid 1 on host mdw
+20170422:11:34:23|gp_restore-[INFO]:-restore succeeded for source dbid 1, target dbid 1 on host mdw
+20170422:11:34:23|gp_restore-[INFO]:-Successfully restored master database: host mdw port 5432 database k1
+20170422:11:34:23|gp_restore-[INFO]:-Report results also written to /gpmaster50/gpseg-1/gp_restore_20170422104200.rpt.
+
+Greenplum Database Restore Report
+Timestamp Key: 20170422104200
+gp_restore Command Line: --gp-k=20170422104200 -d k1
+Pass through Command Line Options:  --post-data-schema-only
+Compression Program: None
+
+Individual Results
+	Restore of k1 on dbid 1 (mdw:5432) from /gpmaster50/gpseg-1/./gp_dump_-1_1_20170422104200_post_data: Succeeded
+	Restore of k1 on dbid 4 (sdw03:40000) from /gpdata50/gpseg2/./gp_dump_2_4_20170422104200: Succeeded
+	Restore of k1 on dbid 3 (sdw02:40000) from /gpdata50/gpseg1/./gp_dump_1_3_20170422104200: Succeeded
+	Restore of k1 on dbid 2 (sdw01:40000) from /gpdata50/gpseg0/./gp_dump_0_2_20170422104200: Succeeded
+
+gp_restore  utility finished successfully.
+[gpadmin@mdw ~]$ 
+
+
+
+
+
+
+[gpadmin@mdw ~]$ gpcrondump -x k1 -u /tmp/backup
+20170422:11:51:15:011856 gpcrondump:mdw:gpadmin-[INFO]:-Starting gpcrondump with args: -x k1 -u /tmp/backup
+20170422:11:51:16:011856 gpcrondump:mdw:gpadmin-[INFO]:----------------------------------------------------
+20170422:11:51:16:011856 gpcrondump:mdw:gpadmin-[INFO]:-Master Greenplum Instance dump parameters
+20170422:11:51:16:011856 gpcrondump:mdw:gpadmin-[INFO]:----------------------------------------------------
+20170422:11:51:16:011856 gpcrondump:mdw:gpadmin-[INFO]:-Dump type                            = Full database
+20170422:11:51:16:011856 gpcrondump:mdw:gpadmin-[INFO]:-Database to be dumped                = k1
+20170422:11:51:16:011856 gpcrondump:mdw:gpadmin-[INFO]:-Dump directory                       = /tmp/backup
+20170422:11:51:16:011856 gpcrondump:mdw:gpadmin-[INFO]:-Master port                          = 5432
+20170422:11:51:16:011856 gpcrondump:mdw:gpadmin-[INFO]:-Master data directory                = /gpmaster50/gpseg-1
+20170422:11:51:16:011856 gpcrondump:mdw:gpadmin-[INFO]:-Run post dump program                = Off
+20170422:11:51:16:011856 gpcrondump:mdw:gpadmin-[INFO]:-Rollback dumps                       = Off
+20170422:11:51:16:011856 gpcrondump:mdw:gpadmin-[INFO]:-Dump file compression                = On
+20170422:11:51:16:011856 gpcrondump:mdw:gpadmin-[INFO]:-Clear old dump files                 = Off
+20170422:11:51:16:011856 gpcrondump:mdw:gpadmin-[INFO]:-Update history table                 = On
+20170422:11:51:16:011856 gpcrondump:mdw:gpadmin-[INFO]:-Secure config files                  = Off
+20170422:11:51:16:011856 gpcrondump:mdw:gpadmin-[INFO]:-Dump global objects                  = Off
+20170422:11:51:16:011856 gpcrondump:mdw:gpadmin-[INFO]:-Vacuum mode type                     = Off
+20170422:11:51:16:011856 gpcrondump:mdw:gpadmin-[INFO]:-Ensuring remaining free disk         > 10
+
+Continue with Greenplum dump Yy|Nn (default=N):
+> y
+20170422:11:51:29:011856 gpcrondump:mdw:gpadmin-[INFO]:-Directory /tmp/backup/db_dumps/20170422 exists
+20170422:11:51:29:011856 gpcrondump:mdw:gpadmin-[INFO]:-Checked /tmp/backup on master
+20170422:11:51:30:011856 gpcrondump:mdw:gpadmin-[INFO]:-Configuring for single database dump
+20170422:11:51:30:011856 gpcrondump:mdw:gpadmin-[INFO]:-Validating disk space
+20170422:11:51:32:011856 gpcrondump:mdw:gpadmin-[INFO]:-Adding compression parameter
+20170422:11:51:32:011856 gpcrondump:mdw:gpadmin-[INFO]:-Adding --no-expand-children
+20170422:11:51:32:011856 gpcrondump:mdw:gpadmin-[INFO]:-Dump process command line gp_dump -p 5432 -U gpadmin --gp-d=/tmp/backup/db_dumps/20170422 --gp-r=/tmp/backup/db_dumps/20170422 --gp-s=p --gp-k=20170422115116 --no-lock --gp-c --no-expand-children "k1"
+20170422:11:51:32:011856 gpcrondump:mdw:gpadmin-[INFO]:-Starting Dump process
+20170422:11:51:41:011856 gpcrondump:mdw:gpadmin-[INFO]:-Releasing pg_class lock
+20170422:11:51:46:011856 gpcrondump:mdw:gpadmin-[INFO]:-Dump process returned exit code 0
+20170422:11:51:46:011856 gpcrondump:mdw:gpadmin-[INFO]:-Timestamp key = 20170422115116
+20170422:11:51:46:011856 gpcrondump:mdw:gpadmin-[INFO]:-Checked master status file and master dump file.
+20170422:11:51:50:011856 gpcrondump:mdw:gpadmin-[INFO]:-Inserted dump record into public.gpcrondump_history in k1 database
+20170422:11:51:50:011856 gpcrondump:mdw:gpadmin-[INFO]:-Dump status report
+20170422:11:51:50:011856 gpcrondump:mdw:gpadmin-[INFO]:----------------------------------------------------
+20170422:11:51:50:011856 gpcrondump:mdw:gpadmin-[INFO]:-Target database                          = k1
+20170422:11:51:50:011856 gpcrondump:mdw:gpadmin-[INFO]:-Dump subdirectory                        = 20170422
+20170422:11:51:50:011856 gpcrondump:mdw:gpadmin-[INFO]:-Dump type                                = Full database
+20170422:11:51:50:011856 gpcrondump:mdw:gpadmin-[INFO]:-Clear old dump directories               = Off
+20170422:11:51:50:011856 gpcrondump:mdw:gpadmin-[INFO]:-Dump start time                          = 11:51:16
+20170422:11:51:50:011856 gpcrondump:mdw:gpadmin-[INFO]:-Dump end time                            = 11:51:46
+20170422:11:51:50:011856 gpcrondump:mdw:gpadmin-[INFO]:-Status                                   = COMPLETED
+20170422:11:51:50:011856 gpcrondump:mdw:gpadmin-[INFO]:-Dump key                                 = 20170422115116
+20170422:11:51:50:011856 gpcrondump:mdw:gpadmin-[INFO]:-Dump file compression                    = On
+20170422:11:51:51:011856 gpcrondump:mdw:gpadmin-[INFO]:-Vacuum mode type                         = Off
+20170422:11:51:51:011856 gpcrondump:mdw:gpadmin-[INFO]:-Exit code zero, no warnings generated
+20170422:11:51:51:011856 gpcrondump:mdw:gpadmin-[INFO]:----------------------------------------------------
+20170422:11:51:51:011856 gpcrondump:mdw:gpadmin-[INFO]:-Sending mail to 6220104@qq.com
+[gpadmin@mdw ~]$ cd /tmp/backup
+You have new mail in /var/spool/mail/gpadmin
+[gpadmin@mdw backup]$ ll
+total 0
+drwxrwxr-x 3 gpadmin gpadmin 22 Apr 22 11:48 db_dumps
+[gpadmin@mdw backup]$ cd db_dumps/20170422/
+[gpadmin@mdw 20170422]$ ll
+total 64
+-rw------- 1 gpadmin gpadmin  108 Apr 22 11:48 gp_cdatabase_-1_1_20170422114818
+-rw------- 1 gpadmin gpadmin  108 Apr 22 11:51 gp_cdatabase_-1_1_20170422115116
+-rw------- 1 gpadmin gpadmin 7230 Apr 22 11:48 gp_dump_-1_1_20170422114818.gz
+-rw------- 1 gpadmin gpadmin  613 Apr 22 11:48 gp_dump_-1_1_20170422114818_post_data.gz
+-rw------- 1 gpadmin gpadmin 7230 Apr 22 11:51 gp_dump_-1_1_20170422115116.gz
+-rw------- 1 gpadmin gpadmin  613 Apr 22 11:51 gp_dump_-1_1_20170422115116_post_data.gz
+-rw-rw-r-- 1 gpadmin gpadmin    0 Apr 22 11:49 gp_dump_20170422114818_ao_state_file
+-rw-rw-r-- 1 gpadmin gpadmin   18 Apr 22 11:49 gp_dump_20170422114818_co_state_file
+-rw-rw-r-- 1 gpadmin gpadmin  125 Apr 22 11:49 gp_dump_20170422114818_last_operation
+-rw-rw-r-- 1 gpadmin gpadmin 1080 Apr 22 11:49 gp_dump_20170422114818.rpt
+-rw-rw-r-- 1 gpadmin gpadmin    0 Apr 22 11:51 gp_dump_20170422115116_ao_state_file
+-rw-rw-r-- 1 gpadmin gpadmin   18 Apr 22 11:51 gp_dump_20170422115116_co_state_file
+-rw-rw-r-- 1 gpadmin gpadmin  125 Apr 22 11:51 gp_dump_20170422115116_last_operation
+-rw-rw-r-- 1 gpadmin gpadmin 1080 Apr 22 11:51 gp_dump_20170422115116.rpt
+-rw------- 1 gpadmin gpadmin 2529 Apr 22 11:48 gp_dump_status_-1_1_20170422114818
+-rw------- 1 gpadmin gpadmin 2529 Apr 22 11:51 gp_dump_status_-1_1_20170422115116
+
+
+
+[gpadmin@mdw ~]$ gpdbrestore -s k1 --redirect k3  -u /tmp/backup
+20170422:21:07:26:027922 gpdbrestore:mdw:gpadmin-[INFO]:-Starting gpdbrestore with args: -s k1 --redirect k3 -u /tmp/backup
+20170422:21:07:26:027922 gpdbrestore:mdw:gpadmin-[INFO]:-Scanning Master host for latest dump file set for database k1
+20170422:21:07:26:027922 gpdbrestore:mdw:gpadmin-[INFO]:-Located dump file gp_dump_20170422114818.rpt for database k1, adding to list
+20170422:21:07:26:027922 gpdbrestore:mdw:gpadmin-[INFO]:-Located dump file gp_dump_20170422115116.rpt for database k1, adding to list
+20170422:21:07:26:027922 gpdbrestore:mdw:gpadmin-[INFO]:-Identified latest dump timestamp for k1 as 20170422115116
+20170422:21:07:26:027922 gpdbrestore:mdw:gpadmin-[INFO]:-------------------------------------------
+20170422:21:07:26:027922 gpdbrestore:mdw:gpadmin-[INFO]:-Greenplum database restore parameters
+20170422:21:07:26:027922 gpdbrestore:mdw:gpadmin-[INFO]:-------------------------------------------
+20170422:21:07:26:027922 gpdbrestore:mdw:gpadmin-[INFO]:-Restore type               = Full Database
+20170422:21:07:26:027922 gpdbrestore:mdw:gpadmin-[INFO]:-Database to be restored    = k1
+20170422:21:07:26:027922 gpdbrestore:mdw:gpadmin-[INFO]:-Drop and re-create db      = Off
+20170422:21:07:26:027922 gpdbrestore:mdw:gpadmin-[INFO]:-Restore method             = Restore specific timestamp
+20170422:21:07:26:027922 gpdbrestore:mdw:gpadmin-[INFO]:-Restore method             = Search for latest
+20170422:21:07:26:027922 gpdbrestore:mdw:gpadmin-[INFO]:-Redirect Restore database  = k3
+20170422:21:07:26:027922 gpdbrestore:mdw:gpadmin-[INFO]:-Restore timestamp          = 20170422115116
+20170422:21:07:26:027922 gpdbrestore:mdw:gpadmin-[INFO]:-Restore compressed dump    = On
+20170422:21:07:26:027922 gpdbrestore:mdw:gpadmin-[INFO]:-Restore global objects     = Off
+20170422:21:07:26:027922 gpdbrestore:mdw:gpadmin-[INFO]:-Array fault tolerance      = f
+20170422:21:07:26:027922 gpdbrestore:mdw:gpadmin-[INFO]:-------------------------------------------
+
+Continue with Greenplum restore Yy|Nn (default=N):
+> y
+20170422:21:07:35:027922 gpdbrestore:mdw:gpadmin-[INFO]:-Creating Database k3
+20170422:21:11:49:027922 gpdbrestore:mdw:gpadmin-[INFO]:-Created Database k3
+20170422:21:11:51:027922 gpdbrestore:mdw:gpadmin-[INFO]:-gp_restore commandline: gp_restore -i -h mdw -p 5432 -U gpadmin --gp-d=/tmp/backup/db_dumps/20170422 --gp-i --gp-k=20170422115116 --gp-l=p --gp-r=/tmp/backup/db_dumps/20170422 --status=/tmp/backup/db_dumps/20170422 --gp-c -d "k3": 
+20170422:21:45:30:027922 gpdbrestore:mdw:gpadmin-[INFO]:-gpdbrestore finished successfully
+20170422:21:45:30:027922 gpdbrestore:mdw:gpadmin-[INFO]:-Updating AO/CO statistics on master
+20170422:21:45:40:027922 gpdbrestore:mdw:gpadmin-[INFO]:-Commencing analyze of k3 database, please wait
+20170422:21:46:22:027922 gpdbrestore:mdw:gpadmin-[INFO]:-Analyze of k3 completed without error
+[gpadmin@mdw ~]$ 
+
+[gpadmin@mdw 20170422]$ more gp_restore_20170422115116.rpt
+
+Greenplum Database Restore Report
+Timestamp Key: 20170422115116
+gp_restore Command Line: -i -h mdw -p 5432 -U gpadmin --gp-d=/tmp/backup/db_dumps/20170422 --gp-i --gp-k=
+20170422115116 --gp-l=p --gp-r=/tmp/backup/db_dumps/20170422 --status=/tmp/backup/db_dumps/20170422 --gp-
+c -d k3
+Pass through Command Line Options: --status /tmp/backup/db_dumps/20170422 --post-data-schema-only
+Compression Program: gunzip
+
+Individual Results
+	Restore of k3 on dbid 1 (mdw:5432) from /tmp/backup/db_dumps/20170422/gp_dump_-1_1_20170422115116
+_post_data.gz: Succeeded
+	Restore of k3 on dbid 4 (sdw03:40000) from /tmp/backup/db_dumps/20170422/gp_dump_2_4_201704221151
+16.gz: Succeeded
+	Restore of k3 on dbid 3 (sdw02:40000) from /tmp/backup/db_dumps/20170422/gp_dump_1_3_201704221151
+16.gz: Succeeded
+	Restore of k3 on dbid 2 (sdw01:40000) from /tmp/backup/db_dumps/20170422/gp_dump_0_2_201704221151
+16.gz: Succeeded
+
+gp_restore  utility finished successfully.
+[gpadmin@mdw 20170422]$ 
+
+
+[gpadmin@mdw 20170422]$ more gp_restore_status_-1_1_20170422115116 
+20170422:21:11:52|gp_restore_agent-[INFO]:-Before fork of gp_restore_agent
+20170422:21:11:52|gp_restore_agent-[INFO]:-20170422:21:11:52|gp_restore_agent-[INFO]:-Command Line:  cat 
+/tmp/backup/db_dumps/20170422/gp_dump_-1_1_20170422115116.gz  | /bin/gunzip -c  | /usr/local/gpdb-5.0.0/b
+in/psql  -h mdw -p 5432 -U gpadmin -d "k3" -a 
+Starting monitor thread
+20170422:21:32:34|gp_restore_agent-[INFO]:-psql finished with rc 0.
+20170422:21:32:35|gp_restore_agent-[INFO]:-Succeeded
+20170422:21:32:35|gp_restore_agent-[INFO]:-Finished successfully
+20170422:21:44:30|gp_restore_agent-[INFO]:-Before fork of gp_restore_agent
+20170422:21:44:30|gp_restore_agent-[INFO]:-Starting monitor thread
+20170422:21:44:30|gp_restore_agent-[INFO]:-Command Line:  cat /tmp/backup/db_dumps/20170422/gp_dump_-1_1_
+20170422115116_post_data.gz  | /bin/gunzip -c  | /usr/local/gpdb-5.0.0/bin/psql  -h mdw -p 5432 -U gpadmi
+n -d "k3" -a 
+20170422:21:45:28|gp_restore_agent-[INFO]:-psql finished with rc 0.
+20170422:21:45:29|gp_restore_agent-[INFO]:-Succeeded
+20170422:21:45:29|gp_restore_agent-[INFO]:-Finished successfully
+[gpadmin@mdw 20170422]$ 
+

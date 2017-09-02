@@ -1,0 +1,100 @@
+1、新建序列
+
+
+tank=# create sequence myserial start 101;
+CREATE SEQUENCE
+tank=# create table ghan(id int,name char(10));
+
+tank=# insert into ghan values(nextval('myserial'),'ghantank');
+INSERT 0 1
+
+
+tank=# select * from ghan order by id;
+ id  |    name    
+-----+------------
+ 101 | ghantank  
+ 102 | ghantank  
+ 103 | ghantank  
+ 104 | ghantank  
+(4 rows)
+
+tank=# 
+
+
+2、更换序列当前开始值
+tank=# alter sequence myserial restart with 301;
+ALTER SEQUENCE
+tank=# insert into ghan values(nextval('myserial'),'ghantank');
+INSERT 0 1
+tank=# select * from ghan order by id;
+ id  |    name    
+-----+------------
+ 101 | ghantank  
+ 102 | ghantank  
+ 103 | ghantank  
+ 104 | ghantank  
+ 301 | ghantank  
+(5 rows)
+
+
+
+3、删除序列
+
+
+tank=# drop sequence myserial;
+DROP SEQUENCE
+tank=# 
+
+
+视图测试
+tank=# select * from tank where id < 10 order by id; 
+ id |          name           
+----+-------------------------
+  1 | 张国汉                 
+  1 | 张国汉                 
+  2 | 张国汉                 
+  2 | 张国汉                 
+  3 | 张国汉                 
+  3 | 张国汉                 
+  4 | 张国汉                 
+  4 | 张国汉                 
+  5 | 张国汉                 
+  5 | 张国汉                 
+  6 | 张国汉                 
+  6 | 张国汉                 
+  7 | 张国汉                 
+  7 | 张国汉                 
+  8 | 张国汉                 
+  8 | 张国汉                 
+  9 | 张国汉                 
+  9 | 张国汉                 
+(18 rows)
+
+tank=# 
+tank=# 
+tank=# create view tank_v AS select * from tank where id < 10 order by id ;
+CREATE VIEW
+tank=# select * from tank_v;
+ id |          name           
+----+-------------------------
+  1 | 张国汉                 
+  1 | 张国汉                 
+  2 | 张国汉                 
+  2 | 张国汉                 
+  3 | 张国汉                 
+  3 | 张国汉                 
+  4 | 张国汉                 
+  4 | 张国汉                 
+  5 | 张国汉                 
+  5 | 张国汉                 
+  6 | 张国汉                 
+  6 | 张国汉                 
+  7 | 张国汉                 
+  7 | 张国汉                 
+  8 | 张国汉                 
+  8 | 张国汉                 
+  9 | 张国汉                 
+  9 | 张国汉                 
+(18 rows)
+
+tank=#         

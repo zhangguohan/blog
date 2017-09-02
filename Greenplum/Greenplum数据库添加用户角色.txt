@@ -1,0 +1,36 @@
+[gpadmin@mdw ~]$ createuser tank
+Shall the new role be a superuser? (y/n) y
+
+
+[gpadmin@mdw ~]$ psql -d tank
+psql (8.2.15)
+Type "help" for help.
+
+tank=# alter role tank with password 'tank'
+tank-# ;
+ALTER ROLE
+tank=# \q
+
+
+
+[gpadmin@mdw ~]$ cat /gpmaster/gpseg-1/pg_hba.conf  |grep 24
+host     all         tank         108.88.3.0/24       md5
+[gpadmin@mdw ~]$ 
+
+
+[gpadmin@mdw ~]$ gpstop -u
+20170307:19:19:46:018448 gpstop:mdw:gpadmin-[INFO]:-Starting gpstop with args: -u
+20170307:19:19:46:018448 gpstop:mdw:gpadmin-[INFO]:-Gathering information and validating the environment...
+20170307:19:19:46:018448 gpstop:mdw:gpadmin-[INFO]:-Obtaining Greenplum Master catalog information
+20170307:19:19:46:018448 gpstop:mdw:gpadmin-[INFO]:-Obtaining Segment details from master...
+20170307:19:19:46:018448 gpstop:mdw:gpadmin-[INFO]:-Greenplum Version: 'postgres (Greenplum Database) 4.3.12.0 build 1'
+20170307:19:19:46:018448 gpstop:mdw:gpadmin-[INFO]:-Signalling all postmaster processes to reload
+
+[gpadmin@mdw ~]$ psql -h 108.88.3.88 -d tank -U tank
+Password for user tank: 
+psql (8.2.15)
+Type "help" for help.
+
+tank=# \q
+
+

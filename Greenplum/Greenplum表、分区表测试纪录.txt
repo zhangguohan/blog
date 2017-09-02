@@ -1,0 +1,679 @@
+新建一个表按ID字段HASH分布 
+
+tank=# create table foo(a int,b text) distributed by (a);
+CREATE TABLE
+tank=# insert into foo values(generate_series(1,10000),'tank');
+INSERT 0 10000
+tank=# SELECT gp_segment_id, count(1) FROM foo GROUP BY gp_segment_id;
+ gp_segment_id | count 
+---------------+-------
+             2 |  3348
+             1 |  3337
+             0 |  3315
+(3 rows)
+
+改变为分布键为B字段（b）因为B字段类型为文本型故不能进行分布健 
+tank=# alter table foo set distributed by (b);
+ALTER TABLE
+tank=# SELECT gp_segment_id, count(1) FROM foo GROUP BY gp_segment_id;
+ gp_segment_id | count 
+---------------+-------
+             2 | 10000
+(1 row)
+
+tank=# insert into foo values(generate_series(1,10000),'tank');
+INSERT 0 10000
+tank=# SELECT gp_segment_id, count(1) FROM foo GROUP BY gp_segment_id;
+ gp_segment_id | count 
+---------------+-------
+             2 | 20000
+(1 row)
+
+
+将原来分布健为 a字段。
+
+tank=# alter table foo set distributed by (a);
+ALTER TABLE
+tank=# SELECT gp_segment_id, count(1) FROM foo GROUP BY gp_segment_id;
+ gp_segment_id | count 
+---------------+-------
+             2 |  6696
+             1 |  6674
+             0 |  6630
+(3 rows)
+
+
+改变分布键方式为随机分布
+tank=# ALTER TABLE foo SET DISTRIBUTED RANDOMLY;
+ALTER TABLE
+tank=# SELECT gp_segment_id, count(1) FROM foo GROUP BY gp_segment_id;
+ gp_segment_id | count 
+---------------+-------
+             2 |  6696
+             1 |  6674
+             0 |  6630
+(3 rows)
+
+tank=# insert into foo values(generate_series(1,10000),'tank');
+INSERT 0 10000
+tank=# SELECT gp_segment_id, count(1) FROM foo GROUP BY gp_segment_id;
+ gp_segment_id | count 
+---------------+-------
+             2 | 10037
+             1 | 10024
+             0 |  9939
+(3 rows)
+
+tank=# insert into foo values(generate_series(1,10000),'tank');
+INSERT 0 10000
+tank=# SELECT gp_segment_id, count(1) FROM foo GROUP BY gp_segment_id;
+ gp_segment_id | count 
+---------------+-------
+             2 | 13376
+             1 | 13334
+             0 | 13290
+(3 rows)
+
+tank=# insert into foo values(generate_series(1,10000),'tank');
+INSERT 0 10000
+tank=# SELECT gp_segment_id, count(1) FROM foo GROUP BY gp_segment_id;
+ gp_segment_id | count 
+---------------+-------
+             2 | 16716
+             1 | 16666
+             0 | 16618
+(3 rows)
+
+tank=# alter table foo set distributed by (a);
+ALTER TABLE
+tank=# SELECT gp_segment_id, count(1) FROM foo GROUP BY gp_segment_id;
+ gp_segment_id | count 
+---------------+-------
+             2 | 16740
+             1 | 16685
+             0 | 16575
+(3 rows)
+
+tank=# 
+
+
+重新分配置数据分布
+
+tank=# ALTER TABLE foo SET WITH (REORGANIZE=TRUE);
+ALTER TABLE
+tank=# SELECT gp_segment_id, count(1) FROM foo GROUP BY gp_segment_id;
+ gp_segment_id | count 
+---------------+-------
+             2 | 16740
+             1 | 16685
+             0 | 16575
+(3 rows)
+
+tank=# 
+
+
+
+
+新建一个列压缩表。
+tank=# create table foozip (like foo) with(appendonly=true,compresstype=zlib,compresslevel=1,orientation=column);
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause, defaulting to distribution columns from LIKE table
+CREATE TABLE
+tank=# insert into foozip select * from foo;
+INSERT 0 30000
+
+
+
+
+
+Dropping a Table
+The DROP TABLE command removes tables from the database. For example:
+DROP TABLE mytable;
+To empty a table of rows without removing the table definition, use DELETE or TRUNCATE. For example:
+DELETE FROM mytable;
+TRUNCATE mytable;
+
+
+
+分区表操作
+
+
+1、按日期分区定期开始日期和结束日期每天一分区表，并默认分区表
+tank=# create table sale4(id int,date date,amt decimal(10,2))
+distributed by (id)
+partition by range(date)
+(start (date '2017-01-01')inclusive
+end(date '2017-04-01')exclusive
+every(interval '1 day'),DEFAULT PARTITION extra);
+
+
+NOTICE:  CREATE TABLE will create partition "sale_1_prt_1" for table "sale"
+NOTICE:  CREATE TABLE will create partition "sale_1_prt_2" for table "sale"
+。。。。。。。。。。。。。。。。。。。。。。。。
+NOTICE:  CREATE TABLE will create partition "sale_1_prt_86" for table "sale"
+NOTICE:  CREATE TABLE will create partition "sale_1_prt_87" for table "sale"
+NOTICE:  CREATE TABLE will create partition "sale_1_prt_88" for table "sale"
+NOTICE:  CREATE TABLE will create partition "sale_1_prt_89" for table "sale"
+NOTICE:  CREATE TABLE will create partition "sale_1_prt_90" for table "sale"
+CREATE TABLE
+tank=# 
+
+INSERT 0 1
+tank=# insert into sale values(1,'2017-02-03', 87.32);
+INSERT 0 1
+tank=# insert into sale values(1,'2017-02-03', 87.32);
+INSERT 0 1
+tank=# insert into sale values(1,'2017-02-03', 87.32);
+INSERT 0 1
+tank=# insert into sale values(1,'2017-04-03', 87.32);
+tank=# select * from sale;
+ id |    date    |  amt  
+----+------------+-------
+  1 | 2017-01-01 | 87.32
+  1 | 2017-02-03 | 87.32
+  1 | 2017-02-03 | 87.32
+  1 | 2017-02-03 | 87.32
+  1 | 2017-02-03 | 87.32
+  1 | 2017-02-03 | 87.32
+(6 rows)
+
+tank=# 
+
+
+
+tank=# explain select * from sale where date='2017-01-01';
+                                     QUERY PLAN                                      
+-------------------------------------------------------------------------------------
+ Gather Motion 2:1  (slice1; segments: 2)  (cost=0.00..1802.50 rows=129 width=21)
+   ->  Append  (cost=0.00..1802.50 rows=65 width=21)
+         ->  Seq Scan on sale_1_prt_1 sale  (cost=0.00..901.25 rows=33 width=21)
+               Filter: date = '2017-01-01'::date
+         ->  Seq Scan on sale_1_prt_other sale  (cost=0.00..901.25 rows=33 width=21)
+               Filter: date = '2017-01-01'::date
+(6 rows)
+
+tank=# 
+
+2、声明和名称单独每个分区
+
+tank=# CREATE TABLE sales6 (id int, date date, amt decimal(10,2))
+ DISTRIBUTED BY (id)
+PARTITION BY RANGE (date)
+( PARTITION Jan08 START (date '2008-01-01') INCLUSIVE ,
+ PARTITION Feb08 START (date '2008-02-01') INCLUSIVE ,
+ PARTITION Mar08 START (date '2008-03-01') INCLUSIVE ,
+PARTITION Apr08 START (date '2008-04-01') INCLUSIVE ,
+ PARTITION May08 START (date '2008-05-01') INCLUSIVE ,
+ PARTITION Jun08 START (date '2008-06-01') INCLUSIVE ,
+END (date '2009-01-01') EXCLUSIVE,DEFAULT PARTITION extra );
+NOTICE:  CREATE TABLE will create partition "sales6_1_prt_extra" for table "sales6"
+NOTICE:  CREATE TABLE will create partition "sales6_1_prt_jan08" for table "sales6"
+NOTICE:  CREATE TABLE will create partition "sales6_1_prt_feb08" for table "sales6"
+NOTICE:  CREATE TABLE will create partition "sales6_1_prt_mar08" for table "sales6"
+NOTICE:  CREATE TABLE will create partition "sales6_1_prt_apr08" for table "sales6"
+NOTICE:  CREATE TABLE will create partition "sales6_1_prt_may08" for table "sales6"
+NOTICE:  CREATE TABLE will create partition "sales6_1_prt_jun08" for table "sales6"
+NOTICE:  CREATE TABLE will create partition "sales6_1_prt_jul08" for table "sales6"
+NOTICE:  CREATE TABLE will create partition "sales6_1_prt_aug08" for table "sales6"
+NOTICE:  CREATE TABLE will create partition "sales6_1_prt_sep08" for table "sales6"
+NOTICE:  CREATE TABLE will create partition "sales6_1_prt_oct08" for table "sales6"
+NOTICE:  CREATE TABLE will create partition "sales6_1_prt_nov08" for table "sales6"
+NOTICE:  CREATE TABLE will create partition "sales6_1_prt_dec08" for table "sales6"
+CREATE TABLE
+tank=# 
+
+
+tank=# insert into sales6 values(generate_series(1,99999),'2008-11-28', 1233.32);
+INSERT 0 99999
+Time: 7817.835 ms
+tank=# SELECT gp_segment_id, count(1) FROM sales6 GROUP BY gp_segment_id;
+ gp_segment_id |  count   
+---------------+----------
+             1 | 18532484
+             0 | 18532505
+(2 rows)
+
+tank=# explain select count(*) from sales6 where date='2008-10-28';
+                                             QUERY PLAN                                             
+----------------------------------------------------------------------------------------------------
+ Aggregate  (cost=1802.89..1802.90 rows=1 width=8)
+   ->  Gather Motion 3:1  (slice1; segments: 3)  (cost=1802.82..1802.87 rows=1 width=8)
+         ->  Aggregate  (cost=1802.82..1802.83 rows=1 width=8)
+               ->  Append  (cost=0.00..1802.50 rows=43 width=0)
+                     ->  Seq Scan on sales6_1_prt_extra sales6  (cost=0.00..901.25 rows=22 width=0)
+                           Filter: date = '2008-10-28'::date
+                     ->  Seq Scan on sales6_1_prt_oct08 sales6  (cost=0.00..901.25 rows=22 width=0)
+                           Filter: date = '2008-10-28'::date
+ Optimizer status: legacy query optimizer
+(9 rows)
+
+tank=# ^C
+tank=# 
+
+tank=# SELECT partitionboundary, partitiontablename, partitionname, partitionlevel, partitionrank FROM pg_partitions WHERE tablename='sales6';
+                          partitionboundary                          | partitiontablename | partitionname
+ | partitionlevel | partitionrank 
+---------------------------------------------------------------------+--------------------+--------------
+-+----------------+---------------
+ DEFAULT PARTITION extra                                             | sales6_1_prt_extra | extra        
+ |              0 |              
+ PARTITION jan08 START ('2008-01-01'::date) END ('2008-02-01'::date) | sales6_1_prt_jan08 | jan08        
+ |              0 |             1
+ PARTITION feb08 START ('2008-02-01'::date) END ('2008-03-01'::date) | sales6_1_prt_feb08 | feb08        
+ |              0 |             2
+ PARTITION mar08 START ('2008-03-01'::date) END ('2008-04-01'::date) | sales6_1_prt_mar08 | mar08        
+ |              0 |             3
+ PARTITION apr08 START ('2008-04-01'::date) END ('2008-05-01'::date) | sales6_1_prt_apr08 | apr08        
+ |              0 |             4
+ PARTITION may08 START ('2008-05-01'::date) END ('2008-06-01'::date) | sales6_1_prt_may08 | may08        
+ |              0 |             5
+ PARTITION jun08 START ('2008-06-01'::date) END ('2008-07-01'::date) | sales6_1_prt_jun08 | jun08        
+ |              0 |             6
+ PARTITION jul08 START ('2008-07-01'::date) END ('2008-08-01'::date) | sales6_1_prt_jul08 | jul08        
+ |              0 |             7
+ PARTITION aug08 START ('2008-08-01'::date) END ('2008-09-01'::date) | sales6_1_prt_aug08 | aug08        
+ |              0 |             8
+ PARTITION sep08 START ('2008-09-01'::date) END ('2008-10-01'::date) | sales6_1_prt_sep08 | sep08        
+ |              0 |             9
+ PARTITION oct08 START ('2008-10-01'::date) END ('2008-11-01'::date) | sales6_1_prt_oct08 | oct08        
+ |              0 |            10
+ PARTITION nov08 START ('2008-11-01'::date) END ('2008-12-01'::date) | sales6_1_prt_nov08 | nov08        
+ |              0 |            11
+ PARTITION dec08 START ('2008-12-01'::date) END ('2009-01-01'::date) | sales6_1_prt_dec08 | dec08        
+ |              0 |            12
+(13 rows)
+
+
+
+
+三、数字范围分区表
+
+
+
+tank=# CREATE TABLE table1 (id int,num int,tag int)
+DISTRIBUTED BY (id)
+PARTITION BY RANGE (id)
+( START (1) END (900000) EVERY (10000),
+DEFAULT PARTITION extra )
+;
+
+
+
+四、列表分区：
+
+tank=# CREATE TABLE rank (id int, rank int, year int, gender char(1), count int )
+DISTRIBUTED BY (id)
+PARTITION BY LIST (gender)
+( PARTITION girls VALUES ('F'),
+PARTITION boys VALUES ('M'),
+DEFAULT PARTITION other );
+NOTICE:  CREATE TABLE will create partition "rank_1_prt_girls" for table "rank"
+NOTICE:  CREATE TABLE will create partition "rank_1_prt_boys" for table "rank"
+NOTICE:  CREATE TABLE will create partition "rank_1_prt_other" for table "rank"
+CREATE TABLE
+Time: 535.016 ms
+tank=# insert into rank values(generate_series(1,99999),1, 2008, 'F',3434);
+INSERT 0 99999
+Time: 381.087 ms
+tank=# insert into rank values(generate_series(1,99999),1, 2009, 'M',34);
+INSERT 0 99999
+Time: 250.010 ms
+tank=# insert into rank values(generate_series(1,99999),1, 2009, 'M',34);
+INSERT 0 99999
+Time: 312.867 ms
+tank=# insert into rank values(generate_series(1,99999),1, 2009, 'M',34);
+INSERT 0 99999
+Time: 364.634 ms
+tank=# insert into rank values(generate_series(1,999998),1, 2019, 'I',34);
+INSERT 0 999998
+Time: 2918.629 ms
+tank=# explain select * from rank where gender='I';
+                                     QUERY PLAN                                      
+-------------------------------------------------------------------------------------
+ Gather Motion 2:1  (slice1; segments: 2)  (cost=0.00..857.50 rows=61 width=24)
+   ->  Append  (cost=0.00..857.50 rows=31 width=24)
+         ->  Seq Scan on rank_1_prt_other rank  (cost=0.00..857.50 rows=31 width=24)
+               Filter: gender = 'I'::bpchar
+(4 rows)
+
+Time: 26.741 ms
+tank=# explain select * from rank where gender='F';
+                                     QUERY PLAN                                      
+-------------------------------------------------------------------------------------
+ Gather Motion 2:1  (slice1; segments: 2)  (cost=0.00..1715.00 rows=122 width=24)
+   ->  Append  (cost=0.00..1715.00 rows=61 width=24)
+         ->  Seq Scan on rank_1_prt_girls rank  (cost=0.00..857.50 rows=31 width=24)
+               Filter: gender = 'F'::bpchar
+         ->  Seq Scan on rank_1_prt_other rank  (cost=0.00..857.50 rows=31 width=24)
+               Filter: gender = 'F'::bpchar
+(6 rows)
+
+Time: 18.301 ms
+tank=# explain select * from rank where gender='M';
+                                     QUERY PLAN                                      
+-------------------------------------------------------------------------------------
+ Gather Motion 2:1  (slice1; segments: 2)  (cost=0.00..1715.00 rows=122 width=24)
+   ->  Append  (cost=0.00..1715.00 rows=61 width=24)
+         ->  Seq Scan on rank_1_prt_boys rank  (cost=0.00..857.50 rows=31 width=24)
+               Filter: gender = 'M'::bpchar
+         ->  Seq Scan on rank_1_prt_other rank  (cost=0.00..857.50 rows=31 width=24)
+               Filter: gender = 'M'::bpchar
+(6 rows)
+
+Time: 22.965 ms
+tank=# explain select count(*) from rank where gender='M';
+                                           QUERY PLAN                                           
+------------------------------------------------------------------------------------------------
+ Aggregate  (cost=1715.36..1715.37 rows=1 width=8)
+   ->  Gather Motion 2:1  (slice1; segments: 2)  (cost=1715.31..1715.35 rows=1 width=8)
+         ->  Aggregate  (cost=1715.31..1715.32 rows=1 width=8)
+               ->  Append  (cost=0.00..1715.00 rows=61 width=0)
+                     ->  Seq Scan on rank_1_prt_boys rank  (cost=0.00..857.50 rows=31 width=0)
+                           Filter: gender = 'M'::bpchar
+                     ->  Seq Scan on rank_1_prt_other rank  (cost=0.00..857.50 rows=31 width=0)
+                           Filter: gender = 'M'::bpchar
+(8 rows)
+
+Time: 17.762 ms
+tank=# select count(*) from rank where gender='M';
+ count  
+--------
+ 299997
+(1 row)
+
+Time: 261.716 ms
+tank=# insert into rank values(generate_series(1,9999998),1, 2019, 'F',34);
+INSERT 0 9999998
+Time: 30387.764 ms
+tank=# SELECT gp_segment_id, count(1) FROM rank GROUP BY gp_segment_id;
+ gp_segment_id |  count  
+---------------+---------
+             1 | 5699993
+             0 | 5699999
+(2 rows)
+
+Time: 1686.161 ms
+tank=# select count(*) from rank where gender='M';
+ count  
+--------
+ 299997
+(1 row)
+
+Time: 266.670 ms
+tank=# select count(*) from rank where gender='F';
+  count   
+----------
+ 10099997
+(1 row)
+
+Time: 1872.272 ms
+tank=# 
+
+
+
+多级别分区设计：
+
+
+
+
+
+Greenplum数据库多级别分区表测试
+
+
+1、新建一个多级别分区表（第一级别按年分区、第二级别按月分区，第三级别按列表分区）
+tank=# CREATE TABLE sales (id int, year int, month int, day int, region text)
+tank-# DISTRIBUTED BY (id)
+tank-# PARTITION BY RANGE (year)
+tank-# SUBPARTITION BY RANGE (month)
+tank-# SUBPARTITION TEMPLATE (
+tank(# START (1) END (13) EVERY (1),
+tank(# DEFAULT SUBPARTITION other_months )
+tank-# SUBPARTITION BY LIST (region)
+tank-# SUBPARTITION TEMPLATE (
+tank(# SUBPARTITION usa VALUES ('usa'),
+tank(# SUBPARTITION europe VALUES ('europe'),
+tank(# SUBPARTITION asia VALUES ('asia'),
+tank(# DEFAULT SUBPARTITION other_regions )
+tank-# ( START (2017) END (2018) EVERY (1),
+tank(# DEFAULT PARTITION outlying_years );
+NOTICE:  CREATE TABLE will create partition "sales_1_prt_outlying_years" for table "sales"
+NOTICE:  CREATE TABLE will create partition "sales_1_prt_outlying_years_2_prt_other_months" for table "sales_1_prt_outlying_years"
+NOTICE:  CREATE TABLE will create partition "sales_1_prt_outlying_years_2_prt_other_months_3_prt_usa" for table "sales_1_prt_outlying_years_2_prt_other_months"
+NOTICE:  CREATE TABLE will create partition "sales_1_prt_outlying_years_2_prt_other_months_3_prt_europe" for table "sales_1_prt_outlying_years_2_prt_other_months"
+NOTICE:  CREATE TABLE will create partition "sales_1_prt_outlying_years_2_prt_other_months_3_prt_asia" for table "sales_1_prt_outlying_years_2_prt_other_months"
+。。。。。。。。。。。。。。。。。。。。。。。。。。。。。。。。。。。。。。。。。。。。。。。。。。。。。。
+NOTICE:  CREATE TABLE will create partition "sales_1_prt_2_2_prt_12_3_prt_usa" for table "sales_1_prt_2_2_prt_12"
+NOTICE:  CREATE TABLE will create partition "sales_1_prt_2_2_prt_12_3_prt_europe" for table "sales_1_prt_2_2_prt_12"
+NOTICE:  CREATE TABLE will create partition "sales_1_prt_2_2_prt_12_3_prt_asia" for table "sales_1_prt_2_2_prt_12"
+NOTICE:  CREATE TABLE will create partition "sales_1_prt_2_2_prt_12_3_prt_other_regions" for table "sales_1_prt_2_2_prt_12"
+NOTICE:  CREATE TABLE will create partition "sales_1_prt_2_2_prt_13" for table "sales_1_prt_2"
+NOTICE:  CREATE TABLE will create partition "sales_1_prt_2_2_prt_13_3_prt_usa" for table "sales_1_prt_2_2_prt_13"
+NOTICE:  CREATE TABLE will create partition "sales_1_prt_2_2_prt_13_3_prt_europe" for table "sales_1_prt_2_2_prt_13"
+NOTICE:  CREATE TABLE will create partition "sales_1_prt_2_2_prt_13_3_prt_asia" for table "sales_1_prt_2_2_prt_13"
+NOTICE:  CREATE TABLE will create partition "sales_1_prt_2_2_prt_13_3_prt_other_regions" for table "sales_1_prt_2_2_prt_13"
+CREATE TABLE
+tank=# 
+
+2、查统计表数据量
+
+tank=# select count(*) from sales ;
+  count   
+----------
+ 25279900
+(1 row)
+
+Time: 2615.808 ms
+tank=# 
+
+
+3、查询2017年05月为aisa的数据库
+tank=# select count(*) from sales where year=2017 and month=05  and region='asia' ;
+ count  
+--------
+ 200000
+(1 row)
+
+Time: 494.169 ms
+
+4、查看执行计划
+
+tank=# explain select count(*) from sales where year=2017 and month=05  and region='asia' ;
+                                                                  QUERY PLAN                             
+                                      
+---------------------------------------------------------------------------------------------------------
+--------------------------------------
+ Aggregate  (cost=6666.09..6666.10 rows=1 width=8)
+   ->  Gather Motion 3:1  (slice1; segments: 3)  (cost=6666.02..6666.07 rows=1 width=8)
+         ->  Aggregate  (cost=6666.02..6666.03 rows=1 width=8)
+               ->  Append  (cost=0.00..6666.00 rows=3 width=0)
+                     ->  Seq Scan on sales_1_prt_outlying_years_2_prt_other_months_3_prt_asia sales  (cos
+t=0.00..833.25 rows=1 width=0)
+                           Filter: year = 2017 AND month = 5 AND region = 'asia'::text
+                     ->  Seq Scan on sales_1_prt_outlying_years_2_prt_other_mont_3_prt_other_regions sale
+s  (cost=0.00..833.25 rows=1 width=0)
+                           Filter: year = 2017 AND month = 5 AND region = 'asia'::text
+                     ->  Seq Scan on sales_1_prt_outlying_years_2_prt_6_3_prt_asia sales  (cost=0.00..833
+.25 rows=1 width=0)
+                           Filter: year = 2017 AND month = 5 AND region = 'asia'::text
+                     ->  Seq Scan on sales_1_prt_outlying_years_2_prt_6_3_prt_other_regions sales  (cost=
+0.00..833.25 rows=1 width=0)
+                           Filter: year = 2017 AND month = 5 AND region = 'asia'::text
+                     ->  Seq Scan on sales_1_prt_2_2_prt_other_months_3_prt_asia sales  (cost=0.00..833.2
+5 rows=1 width=0)
+                           Filter: year = 2017 AND month = 5 AND region = 'asia'::text
+                     ->  Seq Scan on sales_1_prt_2_2_prt_other_months_3_prt_other_regions sales  (cost=0.
+00..833.25 rows=1 width=0)
+                           Filter: year = 2017 AND month = 5 AND region = 'asia'::text
+                     ->  Seq Scan on sales_1_prt_2_2_prt_6_3_prt_asia sales  (cost=0.00..833.25 rows=1 wi
+dth=0)
+                           Filter: year = 2017 AND month = 5 AND region = 'asia'::text
+                     ->  Seq Scan on sales_1_prt_2_2_prt_6_3_prt_other_regions sales  (cost=0.00..833.25 
+rows=1 width=0)
+                           Filter: year = 2017 AND month = 5 AND region = 'asia'::text
+ Optimizer status: legacy query optimizer
+(21 rows)
+
+Time: 561.634 ms
+tank=# ^C
+tank=# 
+
+
+添加子分区及删除了分区操作：
+
+
+tank=# create table rank(id int,year int,gender char(1))distributed by (id)
+tank-# PARTITION BY LIST(gender)
+tank-# (PARTITION girls VALUES('F'),
+tank(# PARTITION boys VALUES('M'),
+tank(# DEFAULT PARTITION other);
+NOTICE:  CREATE TABLE will create partition "rank_1_prt_girls" for table "rank"
+NOTICE:  CREATE TABLE will create partition "rank_1_prt_boys" for table "rank"
+NOTICE:  CREATE TABLE will create partition "rank_1_prt_other" for table "rank"
+CREATE TABLE
+
+tank=#                  
+insert into rank values(generate_series(1,99999), 2008, 'F');
+INSERT 0 99999
+tank=#                  
+insert into rank values(generate_series(1,99999), 2007, 'M');
+INSERT 0 99999
+tank=#                  
+insert into rank values(generate_series(1,99999), 2007, 'O');
+INSERT 0 99999
+
+
+
+
+tank=# explain select count(*) from rank where  gender='F';
+                                           QUERY PLAN                                           
+------------------------------------------------------------------------------------------------
+ Aggregate  (cost=1977.92..1977.93 rows=1 width=8)
+   ->  Gather Motion 3:1  (slice1; segments: 3)  (cost=1977.86..1977.91 rows=1 width=8)
+         ->  Aggregate  (cost=1977.86..1977.87 rows=1 width=8)
+               ->  Append  (cost=0.00..1977.50 rows=48 width=0)
+                     ->  Seq Scan on rank_1_prt_girls rank  (cost=0.00..988.75 rows=24 width=0)
+                           Filter: gender = 'F'::bpchar
+                     ->  Seq Scan on rank_1_prt_other rank  (cost=0.00..988.75 rows=24 width=0)
+                           Filter: gender = 'F'::bpchar
+ Optimizer status: legacy query optimizer
+(9 rows)
+
+tank=# ^C
+tank=# 
+
+
+
+
+1、添加一个范围分区：
+
+
+提示存在default partition 需要分裂defautl分区
+tank=# alter table rank add partition kkk values('K');
+ERROR:  cannot add LIST partition "kkk" to relation "rank" with DEFAULT partition "other"
+HINT:  need to SPLIT partition "other"
+tank=# ^C
+tank=# ^C
+tank=# 
+
+
+
+
+tank=# alter table rank split default partition at ('K') into (partition kb, partition other)
+;
+NOTICE:  exchanged partition "other" of relation "rank" with relation "pg_temp_30590"
+NOTICE:  dropped partition "other" for relation "rank"
+NOTICE:  CREATE TABLE will create partition "rank_1_prt_kb" for table "rank"
+NOTICE:  CREATE TABLE will create partition "rank_1_prt_other" for table "rank"
+ALTER TABLE
+tank=# 
+
+
+tank=# insert into rank values(generate_series(1,99999), 2017, 'k');
+INSERT 0 99999
+tank=# select count(*) from rank where  gender='k';
+ count 
+-------
+ 99999
+(1 row)
+
+tank=# explain select count(*) from rank where  gender='k';
+                                           QUERY PLAN                                           
+------------------------------------------------------------------------------------------------
+ Aggregate  (cost=989.00..989.01 rows=1 width=8)
+   ->  Gather Motion 3:1  (slice1; segments: 3)  (cost=988.93..988.98 rows=1 width=8)
+         ->  Aggregate  (cost=988.93..988.94 rows=1 width=8)
+               ->  Append  (cost=0.00..988.75 rows=24 width=0)
+                     ->  Seq Scan on rank_1_prt_other rank  (cost=0.00..988.75 rows=24 width=0)
+                           Filter: gender = 'k'::bpchar
+ Optimizer status: legacy query optimizer
+(7 rows)
+
+tank=# 
+
+
+
+tank=# select count(*) from rank where  gender='O';
+ count 
+-------
+ 99999
+(1 row)
+
+tank=# alter table rank split default partition at ('O') into (partition Ob, partition other)
+;
+NOTICE:  exchanged partition "other" of relation "rank" with relation "pg_temp_30590"
+NOTICE:  dropped partition "other" for relation "rank"
+NOTICE:  CREATE TABLE will create partition "rank_1_prt_ob" for table "rank"
+NOTICE:  CREATE TABLE will create partition "rank_1_prt_other" for table "rank"
+ALTER TABLE
+tank=# select count(*) from rank where  gender='O';
+ count 
+-------
+ 99999
+(1 row)
+
+tank=# explain select count(*) from rank where  gender='O';
+                                           QUERY PLAN                                           
+------------------------------------------------------------------------------------------------
+ Aggregate  (cost=1977.92..1977.93 rows=1 width=8)
+   ->  Gather Motion 3:1  (slice1; segments: 3)  (cost=1977.86..1977.91 rows=1 width=8)
+         ->  Aggregate  (cost=1977.86..1977.87 rows=1 width=8)
+               ->  Append  (cost=0.00..1977.50 rows=48 width=0)
+                     ->  Seq Scan on rank_1_prt_ob rank  (cost=0.00..988.75 rows=24 width=0)
+                           Filter: gender = 'O'::bpchar
+                     ->  Seq Scan on rank_1_prt_other rank  (cost=0.00..988.75 rows=24 width=0)
+                           Filter: gender = 'O'::bpchar
+ Optimizer status: legacy query optimizer
+(9 rows)
+
+tank=# 
+
+
+
+tank=# insert into rank values(generate_series(1,99999), 2017, 'H');
+INSERT 0 99999
+tank=# explain select count(*) from rank where  gender='H';
+                                           QUERY PLAN                                           
+------------------------------------------------------------------------------------------------
+ Aggregate  (cost=989.00..989.01 rows=1 width=8)
+   ->  Gather Motion 3:1  (slice1; segments: 3)  (cost=988.93..988.98 rows=1 width=8)
+         ->  Aggregate  (cost=988.93..988.94 rows=1 width=8)
+               ->  Append  (cost=0.00..988.75 rows=24 width=0)
+                     ->  Seq Scan on rank_1_prt_other rank  (cost=0.00..988.75 rows=24 width=0)
+                           Filter: gender = 'H'::bpchar
+ Optimizer status: legacy query optimizer
+(7 rows)
+
+tank=# 
+
+
+
+tank=# truncate table rank_1_prt_ob ;
+TRUNCAT
+tank=# 
+tank=# 
+tank=# select count(*) from rank where  gender='O';
+ count 
+-------
+     0
+(1 row)
+
+tank=# 

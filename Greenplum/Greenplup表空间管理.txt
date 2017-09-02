@@ -1,0 +1,323 @@
+1、新建SSD目录：
+
+[root@mdw local]# mkdir /gpssd
+[root@mdw local]# chown gpadmin:gpadmin -R /gpssd/
+
+[root@mdw local]# gpssh -f /home/gpadmin/all_segs 'mkdir /gpssd' //所有segs主机新建目录
+[sdw01]
+[sdw03]
+[sdw02]
+[root@mdw local]# gpssh -f /home/gpadmin/all_segs 'chown gpadmin:gpadmin -R /gpssd/'   // 授权gpadmin用户访问
+[sdw03]
+[sdw01]
+[sdw02]
+
+[gpadmin@mdw ~]$ psql -d tank
+psql (8.2.15)
+Type "help" for help.
+
+
+
+tank=#  select * from pg_filespace;  //查看当前文件空间
+  fsname   | fsowner
+-----------+---------
+ pg_system |      10
+(1 rows)
+
+tank=#
+
+
+二、生成文件空间配置文件
+
+[gpadmin@mdw ~]$ gpfilespace -o gpfilespace_config  //生成文件空间配置空间
+
+20170318:09:29:46:009011 gpfilespace:mdw:gpadmin-[INFO]:-
+A tablespace requires a file system location to store its database
+files. A filespace is a collection of file system locations for all components
+in a Greenplum system (primary segment, mirror segment and master instances).
+Once a filespace is created, it can be used by one or more tablespaces.
+
+
+20170318:09:29:47:009011 gpfilespace:mdw:gpadmin-[INFO]:-getting config
+Enter a name for this filespace
+> pgssd  //输文件空间名
+
+Checking your configuration:
+Your system has 3 hosts with 1 primary and 0 mirror segments per host.
+Your system has 1 hosts with 0 primary and 0 mirror segments per host.
+
+Configuring hosts: [sdw01, sdw03, sdw02]
+
+Please specify 1 locations for the primary segments, one per line:
+
+primary location 1> /gpssd
+
+Configuring hosts: [mdw]
+
+Enter a file system location for the master
+master location> /gpssd
+20170318:09:32:10:009011 gpfilespace:mdw:gpadmin-[INFO]:-Creating configuration file...
+20170318:09:32:10:009011 gpfilespace:mdw:gpadmin-[INFO]:-[created]
+20170318:09:32:10:009011 gpfilespace:mdw:gpadmin-[INFO]:-
+To add this filespace to the database please run the command:
+   gpfilespace --config /home/gpadmin/gpfilespace_config
+
+三、根据配置文件生成新文件空间
+[gpadmin@mdw ~]$ gpfilespace --config /home/gpadmin/gpfilespace_config //生成新的文件空间
+20170318:09:32:33:009113 gpfilespace:mdw:gpadmin-[INFO]:-
+A tablespace requires a file system location to store its database
+files. A filespace is a collection of file system locations for all components
+in a Greenplum system (primary segment, mirror segment and master instances).
+Once a filespace is created, it can be used by one or more tablespaces.
+
+
+20170318:09:32:34:009113 gpfilespace:mdw:gpadmin-[INFO]:-getting config
+Reading Configuration file: '/home/gpadmin/gpfilespace_config'
+20170318:09:32:34:009113 gpfilespace:mdw:gpadmin-[INFO]:-Performing validation on paths
+..............................................................................
+
+20170318:09:32:35:009113 gpfilespace:mdw:gpadmin-[INFO]:-Connecting to database
+20170318:09:32:37:009113 gpfilespace:mdw:gpadmin-[INFO]:-Filespace "pgssd" successfully created
+[gpadmin@mdw ~]$
+
+
+[gpadmin@mdw ~]$ psql -d tank
+psql (8.2.15)
+Type "help" for help.
+
+
+
+tank=#  select * from pg_filespace;
+  fsname   | fsowner
+-----------+---------
+ pg_system |      10
+ pgssd     |      10
+(2 rows)
+
+tank=#
+
+
+
+四、新建表空间使用指定文件空间： pgssd
+
+
+[gpadmin@mdw ~]$ psql -d tank
+psql (8.2.15)
+Type "help" for help.
+
+tank=# CREATE TABLESPACE ssdspace FILESPACE pgssd;  //新建表空间指定文件空间
+CREATE TABLESPACE
+
+tank=# GRANT CREATE ON TABLESPACE ssdspace  TO tank; //赋表空间权限给指定用户
+GRANT
+
+tank=# \q
+
+[gpadmin@mdw ~]$ psql -d tank -h 108.88.3.88 -U tank
+Password for user tank:
+psql (8.2.15)
+Type "help" for help.
+
+
+
+tank=#  CREATE TABLE uname (id int,name char(20)) TABLESPACE ssdspace; //新建表指定表空间  
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'id' as the Greenplum Database data distribution key for this table.
+HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
+CREATE TABLE
+
+
+tank=# insert into uname values(generate_series(1,100000),'张国汉')
+tank-# ;
+INSERT 0 100000
+tank=# 
+
+
+tank=# SELECT gp_segment_id, count(1) FROM foo GROUP BY gp_segment_id;
+ gp_segment_id | count 
+---------------+-------
+             2 | 33316
+             1 | 33336
+             0 | 33348
+(3 rows)
+
+tank=# 
+
+
+
+                                                              ^
+
+
+
+
+
+[gpadmin@mdw ~]$ psql -d tank
+psql (8.2.15)
+Type "help" for help.
+
+tank=# select dbid,content,role,preferred_role,hostname,port from gp_segment_configuration order by role,dbid;
+ dbid | content | role | preferred_role | hostname | port
+------+---------+------+----------------+----------+-------
+    1 |      -1 | p    | p              | mdw      |  5432
+    2 |       0 | p    | p              | sdw01    | 40000
+    3 |       1 | p    | p              | sdw02    | 40000
+    4 |       2 | p    | p              | sdw03    | 40000
+(4 rows)
+
+tank=# select a.dbid,a.content,a.role,a.port,a.hostname,b.fsname,c.fselocation from gp_segment_configuration a,pg_filespace b,pg_filespace_entry c where a.dbid=c.fsedbid and b.oid=c.fsefsoid order by content;
+ dbid | content | role | port  | hostname |  fsname   |    fselocation
+------+---------+------+-------+----------+-----------+-------------------
+    1 |      -1 | p    |  5432 | mdw      | pgssd     | /gpssd/gpseg-1
+    1 |      -1 | p    |  5432 | mdw      | pg_system | /gpmaster/gpseg-1
+    2 |       0 | p    | 40000 | sdw01    | pg_system | /pgdata/gpseg0
+    2 |       0 | p    | 40000 | sdw01    | pgssd     | /gpssd/gpseg0
+    3 |       1 | p    | 40000 | sdw02    | pg_system | /pgdata/gpseg1
+    3 |       1 | p    | 40000 | sdw02    | pgssd     | /gpssd/gpseg1
+    4 |       2 | p    | 40000 | sdw03    | pgssd     | /gpssd/gpseg2
+    4 |       2 | p    | 40000 | sdw03    | pg_system | /pgdata/gpseg2
+(8 rows)
+
+tank=#
+
+
+
+
+tank=# SELECT spcname as tblspc, fsname as filespc,
+tank-# fsedbid as seg_dbid, fselocation as datadir
+tank-# FROM pg_tablespace pgts, pg_filespace pgfs,
+tank-# pg_filespace_entry pgfse
+tank-# WHERE pgts.spcfsoid=pgfse.fsefsoid
+tank-# AND pgfse.fsefsoid=pgfs.oid
+tank-# ORDER BY tblspc, seg_dbid;
+   tblspc   |  filespc  | seg_dbid |      datadir
+------------+-----------+----------+-------------------
+ pg_default | pg_system |        1 | /gpmaster/gpseg-1
+ pg_default | pg_system |        2 | /pgdata/gpseg0
+ pg_default | pg_system |        3 | /pgdata/gpseg1
+ pg_default | pg_system |        4 | /pgdata/gpseg2
+ pg_global  | pg_system |        1 | /gpmaster/gpseg-1
+ pg_global  | pg_system |        2 | /pgdata/gpseg0
+ pg_global  | pg_system |        3 | /pgdata/gpseg1
+ pg_global  | pg_system |        4 | /pgdata/gpseg2
+ ssdspace   | pgssd     |        1 | /gpssd/gpseg-1
+ ssdspace   | pgssd     |        2 | /gpssd/gpseg0
+ ssdspace   | pgssd     |        3 | /gpssd/gpseg1
+ ssdspace   | pgssd     |        4 | /gpssd/gpseg2
+(12 rows)
+
+tank=#
+
+五、将系统临时文件目录，迁移到指定文件目录空间。
+
+
+
+[gpadmin@mdw ~]$ gpstop
+20170318:09:58:13:009806 gpstop:mdw:gpadmin-[INFO]:-Starting gpstop with args:
+20170318:09:58:13:009806 gpstop:mdw:gpadmin-[INFO]:-Gathering information and validating the environment...
+20170318:09:58:13:009806 gpstop:mdw:gpadmin-[INFO]:-Obtaining Greenplum Master catalog information
+20170318:09:58:13:009806 gpstop:mdw:gpadmin-[INFO]:-Obtaining Segment details from master...
+20170318:09:58:14:009806 gpstop:mdw:gpadmin-[INFO]:-Greenplum Version: 'postgres (Greenplum Database) 4.3.12.0 build 1'
+20170318:09:58:14:009806 gpstop:mdw:gpadmin-[INFO]:---------------------------------------------
+20170318:09:58:14:009806 gpstop:mdw:gpadmin-[INFO]:-Master instance parameters
+20170318:09:58:14:009806 gpstop:mdw:gpadmin-[INFO]:---------------------------------------------
+20170318:09:58:14:009806 gpstop:mdw:gpadmin-[INFO]:-   Master Greenplum instance process active PID   = 21766
+20170318:09:58:14:009806 gpstop:mdw:gpadmin-[INFO]:-   Database                                       = template1
+20170318:09:58:14:009806 gpstop:mdw:gpadmin-[INFO]:-   Master port                                    = 5432
+20170318:09:58:14:009806 gpstop:mdw:gpadmin-[INFO]:-   Master directory                               = /gpmaster/gpseg-1
+20170318:09:58:14:009806 gpstop:mdw:gpadmin-[INFO]:-   Shutdown mode                                  = smart
+20170318:09:58:14:009806 gpstop:mdw:gpadmin-[INFO]:-   Timeout                                        = 120
+20170318:09:58:14:009806 gpstop:mdw:gpadmin-[INFO]:-   Shutdown Master standby host                   = Off
+20170318:09:58:14:009806 gpstop:mdw:gpadmin-[INFO]:---------------------------------------------
+20170318:09:58:14:009806 gpstop:mdw:gpadmin-[INFO]:-Segment instances that will be shutdown:
+20170318:09:58:14:009806 gpstop:mdw:gpadmin-[INFO]:---------------------------------------------
+20170318:09:58:14:009806 gpstop:mdw:gpadmin-[INFO]:-   Host    Datadir          Port    Status
+20170318:09:58:14:009806 gpstop:mdw:gpadmin-[INFO]:-   sdw01   /pgdata/gpseg0   40000   u
+20170318:09:58:14:009806 gpstop:mdw:gpadmin-[INFO]:-   sdw02   /pgdata/gpseg1   40000   u
+20170318:09:58:14:009806 gpstop:mdw:gpadmin-[INFO]:-   sdw03   /pgdata/gpseg2   40000   u
+
+Continue with Greenplum instance shutdown Yy|Nn (default=N):
+> y
+20170318:09:58:16:009806 gpstop:mdw:gpadmin-[INFO]:-There are 0 connections to the database
+20170318:09:58:16:009806 gpstop:mdw:gpadmin-[INFO]:-Commencing Master instance shutdown with mode='smart'
+20170318:09:58:16:009806 gpstop:mdw:gpadmin-[INFO]:-Master host=mdw
+20170318:09:58:16:009806 gpstop:mdw:gpadmin-[INFO]:-Commencing Master instance shutdown with mode=smart
+20170318:09:58:16:009806 gpstop:mdw:gpadmin-[INFO]:-Master segment instance directory=/gpmaster/gpseg-1
+20170318:09:58:17:009806 gpstop:mdw:gpadmin-[INFO]:-Attempting forceful termination of any leftover master process
+20170318:09:58:17:009806 gpstop:mdw:gpadmin-[INFO]:-Terminating processes for segment /gpmaster/gpseg-1
+20170318:09:58:17:009806 gpstop:mdw:gpadmin-[ERROR]:-Failed to kill processes for segment /gpmaster/gpseg-1: ([Errno 3] No such process)
+20170318:09:58:17:009806 gpstop:mdw:gpadmin-[INFO]:-No standby master host configured
+20170318:09:58:17:009806 gpstop:mdw:gpadmin-[INFO]:-Commencing parallel segment instance shutdown, please wait...
+20170318:09:58:17:009806 gpstop:mdw:gpadmin-[INFO]:-0.00% of jobs completed
+20170318:09:58:27:009806 gpstop:mdw:gpadmin-[INFO]:-100.00% of jobs completed
+20170318:09:58:27:009806 gpstop:mdw:gpadmin-[INFO]:-----------------------------------------------------
+20170318:09:58:27:009806 gpstop:mdw:gpadmin-[INFO]:-   Segments stopped successfully      = 3
+20170318:09:58:27:009806 gpstop:mdw:gpadmin-[INFO]:-   Segments with errors during stop   = 0
+20170318:09:58:27:009806 gpstop:mdw:gpadmin-[INFO]:-----------------------------------------------------
+20170318:09:58:27:009806 gpstop:mdw:gpadmin-[INFO]:-Successfully shutdown 3 of 3 segment instances
+20170318:09:58:27:009806 gpstop:mdw:gpadmin-[INFO]:-Database successfully shutdown with no errors reported
+20170318:09:58:27:009806 gpstop:mdw:gpadmin-[INFO]:-Cleaning up leftover gpmmon process
+20170318:09:58:27:009806 gpstop:mdw:gpadmin-[INFO]:-No leftover gpmmon process found
+20170318:09:58:27:009806 gpstop:mdw:gpadmin-[INFO]:-Cleaning up leftover gpsmon processes
+20170318:09:58:27:009806 gpstop:mdw:gpadmin-[INFO]:-No leftover gpsmon processes on some hosts. not attempting forceful termination on these hosts
+20170318:09:58:27:009806 gpstop:mdw:gpadmin-[INFO]:-Cleaning up leftover shared memory
+
+
+[gpadmin@mdw ~]$ gpfilespace --movetempfilespace pgssd  //迁移临时文件到指定文件存储空间
+
+
+20170318:10:01:19:010380 gpfilespace:mdw:gpadmin-[INFO]:-
+A tablespace requires a file system location to store its database
+files. A filespace is a collection of file system locations for all components
+in a Greenplum system (primary segment, mirror segment and master instances).
+Once a filespace is created, it can be used by one or more tablespaces.
+
+
+20170318:10:01:19:010380 gpfilespace:mdw:gpadmin-[INFO]:-Database was started in NORMAL mode
+20170318:10:01:19:010380 gpfilespace:mdw:gpadmin-[INFO]:-Stopping Greenplum Database
+20170318:10:01:37:010380 gpfilespace:mdw:gpadmin-[INFO]:-Starting Greenplum Database in master only mode
+20170318:10:01:39:010380 gpfilespace:mdw:gpadmin-[INFO]:-Checking if filespace pgssd exists
+20170318:10:01:39:010380 gpfilespace:mdw:gpadmin-[INFO]:-Checking if filespace is same as current filespace
+20170318:10:01:39:010380 gpfilespace:mdw:gpadmin-[INFO]:-Stopping Greenplum Database in master only mode
+20170318:10:01:41:010380 gpfilespace:mdw:gpadmin-[INFO]:-Checking for connectivity
+20170318:10:01:41:010380 gpfilespace:mdw:gpadmin-[INFO]:-Obtaining current filespace information
+20170318:10:01:41:010380 gpfilespace:mdw:gpadmin-[INFO]:-Obtaining current filespace entries used by TEMPORARY_FILES
+20170318:10:01:41:010380 gpfilespace:mdw:gpadmin-[INFO]:-Obtaining segment information ...
+20170318:10:01:41:010380 gpfilespace:mdw:gpadmin-[INFO]:-Creating RemoteOperations list
+20170318:10:01:41:010380 gpfilespace:mdw:gpadmin-[INFO]:-Moving TEMPORARY_FILES filespace from pg_system to pgssd ...
+20170318:10:01:41:010380 gpfilespace:mdw:gpadmin-[INFO]:-Starting Greenplum Database
+[gpadmin@mdw ~]$ psql -d tank
+psql (8.2.15)
+Type "help" for help.
+
+tank=#  select * from pg_filespace;
+  fsname   | fsowner
+-----------+---------
+ pg_system |      10
+ pgssd     |      10
+(2 rows)
+
+
+
+
+[gpadmin@mdw ~]$ gpfilespace --showtempfilespace   //要查看指定临时文件存储空间
+20170318:10:44:06:011592 gpfilespace:mdw:gpadmin-[INFO]:-
+A tablespace requires a file system location to store its database
+files. A filespace is a collection of file system locations for all components
+in a Greenplum system (primary segment, mirror segment and master instances).
+Once a filespace is created, it can be used by one or more tablespaces.
+
+
+20170318:10:44:06:011592 gpfilespace:mdw:gpadmin-[INFO]:-Getting filespace information for TEMPORARY_FILES
+20170318:10:44:07:011592 gpfilespace:mdw:gpadmin-[INFO]:-Checking for filespace consistency
+20170318:10:44:07:011592 gpfilespace:mdw:gpadmin-[INFO]:-Obtaining current filespace entries used by TEMPORARY_FILES
+20170318:10:44:08:011592 gpfilespace:mdw:gpadmin-[INFO]:-TEMPORARY_FILES OIDs are consistent for pgssd filespace
+20170318:10:44:08:011592 gpfilespace:mdw:gpadmin-[INFO]:-TEMPORARY_FILES entries are consistent for pgssd filespace
+20170318:10:44:08:011592 gpfilespace:mdw:gpadmin-[INFO]:-Obtaining current filespace entries used by TEMPORARY_FILES
+20170318:10:44:08:011592 gpfilespace:mdw:gpadmin-[INFO]:-Current Filespace for TEMPORARY_FILES is pgssd
+20170318:10:44:08:011592 gpfilespace:mdw:gpadmin-[INFO]:-1    /gpssd/gpseg-1
+20170318:10:44:08:011592 gpfilespace:mdw:gpadmin-[INFO]:-2    /gpssd/gpseg0
+20170318:10:44:08:011592 gpfilespace:mdw:gpadmin-[INFO]:-3    /gpssd/gpseg1
+20170318:10:44:08:011592 gpfilespace:mdw:gpadmin-[INFO]:-4    /gpssd/gpseg2
+[gpadmin@mdw ~]$
+
+
+

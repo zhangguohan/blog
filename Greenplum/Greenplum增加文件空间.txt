@@ -1,0 +1,206 @@
+
+一、查看文件空间目录
+tank=# select * from pg_filespace_entry ;
+ fsefsoid | fsedbid |       fselocation       
+----------+---------+-------------------------
+     3052 |       2 | /gpdata50/gpseg0
+     3052 |       3 | /gpdata50/gpseg1
+     3052 |       4 | /gpdata50/gpseg2
+     3052 |       5 | /gpdata/mirror50/gpseg0
+     3052 |       6 | /gpdata/mirror50/gpseg1
+     3052 |       7 | /gpdata/mirror50/gpseg2
+     3052 |       1 | /gpmaster50/gpseg-1
+     3052 |       8 | /gpmaster50/gpseg-1
+(8 rows)
+
+tank=# \q
+
+
+二、新建文件空间对应目录（master\masterstandby\segment节点）
+
+[gpadmin@mdw ~]$ mkdir /gpmaster50/gpssd
+
+
+[gpadmin@mdw ~]$ gpssh -f /home/gpadmin/all_segs 'mkdir /gpdata50/gpssd'
+[sdw01]
+[sdw02]
+[sdw03]
+[gpadmin@mdw ~]$ gpssh -f /home/gpadmin/all_segs 'mkdir /gpdata/mirror50/gpssd'
+[sdw01]
+[sdw03]
+[sdw02]
+[gpadmin@mdw ~]$ gpssh -f /home/gpadmin/standbymaster_hosts 'mkdir /gpmaster50/gpssd'
+[mdw02]
+[gpadmin@mdw ~]$ 
+
+[gpadmin@mdw ~]$ gpssh -f /home/gpadmin/all_segs 'mkdir /gpdata50/gpssd'
+[sdw01]
+[sdw02]
+[sdw03]
+[gpadmin@mdw ~]$ gpssh -f /home/gpadmin/all_segs 'mkdir /gpdata/mirror50/gpssd'
+[sdw01]
+[sdw03]
+[sdw02]
+[gpadmin@mdw ~]$ gpssh -f /home/gpadmin/standbymaster_hosts 'mkdir /gpmaster50/gpssd'
+[mdw02]
+[gpadmin@mdw ~]$ 
+[gpadmin@mdw ~]$ 
+
+
+三、生成filespace配置文件
+
+[gpadmin@mdw ~]$ gpfilespace -o gpfilespace_config 
+20170331:02:21:58:008797 gpfilespace:mdw:gpadmin-[INFO]:-
+A tablespace requires a file system location to store its database
+files. A filespace is a collection of file system locations for all components
+in a Greenplum system (primary segment, mirror segment and master instances).
+Once a filespace is created, it can be used by one or more tablespaces.
+
+
+20170331:02:21:59:008797 gpfilespace:mdw:gpadmin-[INFO]:-getting config
+Enter a name for this filespace
+> gpssd //文件空间名
+
+Checking your configuration:
+Your system has 3 hosts with 1 primary and 1 mirror segments per host.
+Your system has 2 hosts with 0 primary and 0 mirror segments per host.
+
+Configuring hosts: [sdw01, sdw03, sdw02]
+
+Please specify 1 locations for the primary segments, one per line:
+primary location 1> /gpdata50/gpssd  //所有节点segments新增目录
+
+Please specify 1 locations for the mirror segments, one per line:
+mirror location 1> /gpdata/mirror50/gpssd //所有新增mirror segments新地目录
+
+Configuring hosts: [mdw02, mdw]
+
+Enter a file system location for the master
+master location> /gpmaster50/gpssd   //配置master新增目录
+20170331:02:23:57:008797 gpfilespace:mdw:gpadmin-[INFO]:-Creating configuration file...
+20170331:02:23:57:008797 gpfilespace:mdw:gpadmin-[INFO]:-[created]
+20170331:02:23:57:008797 gpfilespace:mdw:gpadmin-[INFO]:-
+To add this filespace to the database please run the command:
+   gpfilespace --config /home/gpadmin/gpfilespace_config
+
+
+
+
+四、查看生成配置文件
+[gpadmin@mdw ~]$ more /home/gpadmin/gpfilespace_config
+filespace:gpssd
+mdw:1:/gpmaster50/gpssd/gpseg-1
+mdw02:8:/gpmaster50/gpssd/gpseg-1
+sdw01:2:/gpdata50/gpssd/gpseg0
+sdw01:7:/gpdata/mirror50/gpssd/gpseg2
+sdw03:4:/gpdata50/gpssd/gpseg2
+sdw03:6:/gpdata/mirror50/gpssd/gpseg1
+sdw02:3:/gpdata50/gpssd/gpseg1
+sdw02:5:/gpdata/mirror50/gpssd/gpseg0
+
+五、执行生文件空间
+[gpadmin@mdw ~]$ gpfilespace --config /home/gpadmin/gpfilespace_config 
+20170331:02:24:53:008907 gpfilespace:mdw:gpadmin-[INFO]:-
+A tablespace requires a file system location to store its database
+files. A filespace is a collection of file system locations for all components
+in a Greenplum system (primary segment, mirror segment and master instances).
+Once a filespace is created, it can be used by one or more tablespaces.
+
+
+20170331:02:24:54:008907 gpfilespace:mdw:gpadmin-[INFO]:-getting config
+Reading Configuration file: '/home/gpadmin/gpfilespace_config'
+20170331:02:24:56:008907 gpfilespace:mdw:gpadmin-[INFO]:-Performing validation on paths
+..............................................................................
+
+20170331:02:24:57:008907 gpfilespace:mdw:gpadmin-[INFO]:-Connecting to database
+20170331:02:24:59:008907 gpfilespace:mdw:gpadmin-[INFO]:-Filespace "gpssd" successfully created
+[gpadmin@mdw ~]$ 
+
+
+
+六、查看文件空间
+tank=# select * from pg_filespace;
+  fsname   | fsowner 
+-----------+---------
+ pg_system |      10
+ gpssd     |      10
+(2 rows)
+
+
+七、新建表空间指定文件空间测试
+tank=# CREATE TABLESPACE ssdspace FILESPACE gpssd; 
+CREATE TABLESPACE
+ 
+tank=#  CREATE TABLE tank (id int,name char(20)) TABLESPACE ssdspace; 
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'id' as the Greenplum Database data distribution key for this table.
+HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
+CREATE TABLE
+tank=# insert into tank values(generate_series(1,100000),'张国汉')
+tank-# ;
+INSERT 0 100000
+tank=# insert into tank values(generate_series(1,100000),'张国汉')
+;
+INSERT 0 100000
+tank=#  SELECT gp_segment_id, count(1) FROM tank GROUP BY gp_segment_id;
+ gp_segment_id | count 
+---------------+-------
+             1 | 66672
+             0 | 66696
+             2 | 66632
+(3 rows)
+
+tank=# select a.dbid,a.content,a.role,a.port,a.hostname,b.fsname,c.fselocation from gp_segment_configuration a,pg_filespace b,pg_filespace_entry c where a.dbid=c.fsedbid and b.oid=c.fsefsoid order by content;
+ dbid | content | role | port  | hostname |  fsname   |          fselocation          
+------+---------+------+-------+----------+-----------+-------------------------------
+    1 |      -1 | p    |  5432 | mdw      | gpssd     | /gpmaster50/gpssd/gpseg-1
+    1 |      -1 | p    |  5432 | mdw      | pg_system | /gpmaster50/gpseg-1
+    8 |      -1 | m    |  5432 | mdw02    | gpssd     | /gpmaster50/gpssd/gpseg-1
+    8 |      -1 | m    |  5432 | mdw02    | pg_system | /gpmaster50/gpseg-1
+    5 |       0 | m    | 41000 | sdw02    | pg_system | /gpdata/mirror50/gpseg0
+    5 |       0 | m    | 41000 | sdw02    | gpssd     | /gpdata/mirror50/gpssd/gpseg0
+    2 |       0 | p    | 40000 | sdw01    | pg_system | /gpdata50/gpseg0
+    2 |       0 | p    | 40000 | sdw01    | gpssd     | /gpdata50/gpssd/gpseg0
+    3 |       1 | p    | 40000 | sdw02    | gpssd     | /gpdata50/gpssd/gpseg1
+    3 |       1 | p    | 40000 | sdw02    | pg_system | /gpdata50/gpseg1
+    6 |       1 | m    | 41000 | sdw03    | gpssd     | /gpdata/mirror50/gpssd/gpseg1
+    6 |       1 | m    | 41000 | sdw03    | pg_system | /gpdata/mirror50/gpseg1
+    7 |       2 | m    | 41000 | sdw01    | pg_system | /gpdata/mirror50/gpseg2
+    7 |       2 | m    | 41000 | sdw01    | gpssd     | /gpdata/mirror50/gpssd/gpseg2
+    4 |       2 | p    | 40000 | sdw03    | pg_system | /gpdata50/gpseg2
+    4 |       2 | p    | 40000 | sdw03    | gpssd     | /gpdata50/gpssd/gpseg2
+(16 rows)
+
+tank=# SELECT spcname as tblspc, fsname as filespc,fsedbid as seg_dbid, fselocation as datadir FROM pg_tablespace pgts, pg_filespace pgfs,pg_filespace_entry pgfse WHERE pgts.spcfsoid=pgfse.fsefsoid
+tank-# AND pgfse.fsefsoid=pgfs.oid ORDER BY tblspc, seg_dbid;
+   tblspc   |  filespc  | seg_dbid |            datadir            
+------------+-----------+----------+-------------------------------
+ pg_default | pg_system |        1 | /gpmaster50/gpseg-1
+ pg_default | pg_system |        2 | /gpdata50/gpseg0
+ pg_default | pg_system |        3 | /gpdata50/gpseg1
+ pg_default | pg_system |        4 | /gpdata50/gpseg2
+ pg_default | pg_system |        5 | /gpdata/mirror50/gpseg0
+ pg_default | pg_system |        6 | /gpdata/mirror50/gpseg1
+ pg_default | pg_system |        7 | /gpdata/mirror50/gpseg2
+ pg_default | pg_system |        8 | /gpmaster50/gpseg-1
+ pg_global  | pg_system |        1 | /gpmaster50/gpseg-1
+ pg_global  | pg_system |        2 | /gpdata50/gpseg0
+ pg_global  | pg_system |        3 | /gpdata50/gpseg1
+ pg_global  | pg_system |        4 | /gpdata50/gpseg2
+ pg_global  | pg_system |        5 | /gpdata/mirror50/gpseg0
+ pg_global  | pg_system |        6 | /gpdata/mirror50/gpseg1
+ pg_global  | pg_system |        7 | /gpdata/mirror50/gpseg2
+ pg_global  | pg_system |        8 | /gpmaster50/gpseg-1
+ ssdspace   | gpssd     |        1 | /gpmaster50/gpssd/gpseg-1
+ ssdspace   | gpssd     |        2 | /gpdata50/gpssd/gpseg0
+ ssdspace   | gpssd     |        3 | /gpdata50/gpssd/gpseg1
+ ssdspace   | gpssd     |        4 | /gpdata50/gpssd/gpseg2
+ ssdspace   | gpssd     |        5 | /gpdata/mirror50/gpssd/gpseg0
+ ssdspace   | gpssd     |        6 | /gpdata/mirror50/gpssd/gpseg1
+ ssdspace   | gpssd     |        7 | /gpdata/mirror50/gpssd/gpseg2
+ ssdspace   | gpssd     |        8 | /gpmaster50/gpssd/gpseg-1
+(24 rows)
+
+tank=# 
+
+
+

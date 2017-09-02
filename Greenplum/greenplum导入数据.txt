@@ -1,0 +1,54 @@
+
+µº»Î≤‚ ‘
+
+
+
+[gpadmin@mdw load]$ gpfdist -d /home/gpadmin/load -p 8081 -l /home/gpadmin/log
+2017-03-23 05:52:32 1531 INFO Before opening listening sockets - following listening sockets are available:
+2017-03-23 05:52:32 1531 INFO IPV6 socket: [::]:8081
+2017-03-23 05:52:32 1531 INFO IPV4 socket: 0.0.0.0:8081
+2017-03-23 05:52:32 1531 INFO Trying to open listening socket:
+2017-03-23 05:52:32 1531 INFO IPV6 socket: [::]:8081
+2017-03-23 05:52:32 1531 INFO Opening listening socket succeeded
+2017-03-23 05:52:32 1531 INFO Trying to open listening socket:
+2017-03-23 05:52:32 1531 INFO IPV4 socket: 0.0.0.0:8081
+Serving HTTP on port 8081, directory /home/gpadmin/load
+
+
+[gpadmin@mdw load]$ more load.txt 
+1,10000000000,110001
+2,10000000000,110002
+3,10000000000,110003
+4,10000000000,110004
+5,10000000000,111001
+6,10000000000,111002
+7,10000000000,112001
+8,10000000000,112002
+9,10000000000,112003
+10,10000000000,112004
+11,10000000000,221001
+12,10000000000,221002
+13,10000000000,221003
+14,10000000000,222001
+
+
+
+tank=# CREATE TABLE table1 ( id int NOT NULL, num varchar(20) NOT NULL,tag varchar(20) DEFAULT NULL, PRIMARY KEY (id)   ) ;
+NOTICE:  CREATE TABLE / PRIMARY KEY will create implicit index "table1_pkey" for table "table1"
+CREATE TABLE
+
+tank=# CREATE EXTERNAL TABLE ext_expenses2 ( id int,num varchar(20),tag varchar(20) ) 
+tank-# LOCATION ('gpfdist://10.218.72.55:8081/*') 
+tank-# FORMAT 'TEXT' (DELIMITER ',');
+CREATE EXTERNAL TABLE
+
+
+
+tank=# \timing
+Timing is on.
+tank=# INSERT INTO table1 SELECT * from ext_expenses2 ;
+INSERT 0 2700000
+Time: 40629.335 ms
+
+
+
