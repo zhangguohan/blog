@@ -1,11 +1,6 @@
 # blog
 
-* iasdfsadf
-  
-  
-  [https://github.com/zhangguohan/blog/blob/595fb7351240583c5c7afc099bc5475de79edcec/test.md](https://github.com/zhangguohan/blog/blob/595fb7351240583c5c7afc099bc5475de79edcec/test.md "克格勃")
-
-[太极鞋花木成畦手自栽](https://github.com/zhangguohan/blog/blob/595fb7351240583c5c7afc099bc5475de79edcec/test.md)
 
 
-asdfsafdsadfsadf
+[2017-09-10_Greenplum Database on Centos7源码安装 ](https://github.com/zhangguohan/blog/blob/master/Greenplum/Greenplum%20Database%20on%20Centos7%E6%BA%90%E7%A0%81%E5%AE%89%E8%A3%85.md)
+
