@@ -1,0 +1,191 @@
+Postgresql 通过fdw_JDBC连接DB210.5
+
+[root@db2 jdbc_fdw-1.0.0]#  locate libjvm.so
+/opt/IBM/tsamp/sam/java/jre/bin/classic/libjvm.so
+/opt/IBM/tsamp/sam/java/jre/bin/j9vm/libjvm.so
+/opt/ibm/db2/V9.7/itma/JRE/lx8266/bin/classic/libjvm.so
+/opt/ibm/db2/V9.7/itma/JRE/lx8266/bin/j9vm/libjvm.so
+/opt/ibm/db2/V9.7/java/jdk64/jre/bin/classic/libjvm.so
+/opt/ibm/db2/V9.7/java/jdk64/jre/bin/j9vm/libjvm.so
+/opt/ibm/db2/V9.7/java/jdk64/jre/lib/amd64/classic/libjvm.so
+/opt/ibm/db2/V9.7/java/jdk64/jre/lib/amd64/compressedrefs/libjvm.so
+/opt/ibm/db2/V9.7/java/jdk64/jre/lib/amd64/default/libjvm.so
+/opt/ibm/db2/V9.7/java/jdk64/jre/lib/amd64/j9vm/libjvm.so
+/usr/lib/gcj-4.1.1/libjvm.so
+/usr/lib/jvm/java-1.4.2-gcj-1.4.2.0/jre/lib/x86_64/client/libjvm.so
+/usr/lib/jvm/java-1.4.2-gcj-1.4.2.0/jre/lib/x86_64/server/libjvm.so
+/usr/lib/jvm/java-1.6.0-openjdk-1.6.0.39.x86_64/jre/lib/amd64/server/libjvm.so
+
+[root@db2 JDBC_FDW]#  ln -s /usr/local/jdk1.6.0_45/jre/lib/amd64/server/libjvm.so /usr/lib/libjvm.so
+
+[root@db2 JDBC_FDW]# ldconfig
+
+
+
+[root@db2 JDBC_FDW]#  git clone git://github.com/atris/JDBC_FDW.git
+
+3) Enter the JDBC_FDW folder.
+
+[root@db2 JDBC_FDW]#  cd JDBC_FDW
+ 
+4) Execute Make Clean
+[root@db2 JDBC_FDW]# sudo PATH=/usr/local/pg9.5.5/bin/:$PATH make USE_PGXS=1 
+
+
+[root@db2 JDBC_FDW]#  cp jdbc_fdw.control /usr/local/pg9.5.5/share/postgresql/extension/
+[root@db2 JDBC_FDW]#  cp jdbc_fdw--1.0.sql /usr/local/pg9.5.5/share/postgresql/extension/
+[root@db2 JDBC_FDW]#  cp jdbc_fdw.so /usr/local/pg9.5.5/lib/postgresql/
+
+
+
+
+[db2inst4@db2-node01 ~]$ db2 describe table TABLEA
+
+                                Data type                     Column
+Column name                     schema    Data type name      Length     Scale Nulls
+------------------------------- --------- ------------------- ---------- ----- ------
+ID                              SYSIBM    INTEGER                      4     0 Yes   
+NAME                            SYSIBM    CHARACTER                   10     0 Yes   
+SALARY                          SYSIBM    INTEGER                      4     0 Yes   
+
+  3 record(s) selected.
+
+[db2inst4@db2-node01 ~]$ 
+
+
+[db2inst4@db2-node01 ~]$ db2 "select * from tablea"
+
+ID          NAME       SALARY     
+----------- ---------- -----------
+       1001 SAM              10000
+       1002 PAM               9500
+       1003 CAM              12500
+       1004 RAM               7500
+       1005 HAM              20000
+       2001 SAM              10000
+       2002 PAM               9500
+       2003 CAM              12500
+       2004 RAM               7500
+       2005 HAM              20000
+       3001 SAM              10000
+       3002 PAM               9500
+       3003 CAM              12500
+       3004 RAM               7500
+       3005 HAM              20000
+       4001 MAS               2500
+       4002 MAP               3570
+       4003 MAC               4560
+       4004 MAR               5570
+       4005 MAH               6750
+
+  20 record(s) selected.
+
+[db2inst4@db2-node01 ~]$ 
+
+
+
+
+[postgres@db2 ~]$ psql 
+psql (9.5.5)
+Type "help" for help.
+
+postgres=# CREATE EXTENSION jdbc_fdw;
+CREATE EXTENSION
+
+postgres=# CREATE SERVER jdbc_serv4 FOREIGN DATA WRAPPER jdbc_fdw OPTIONS(drivername 'com.ibm.db2.jcc.DB2Driver',url 'jdbc:db2://108.88.3.106:60000/test',querytimeout '15',jarfile '/usr/local/pg9.5.5/lib/db2jcc4.jar',maxheapsize '600');
+CREATE SERVER
+postgres=# CREATE USER MAPPING FOR postgres SERVER jdbc_serv4  OPTIONS (username 'db2inst4', password 'db2inst4')
+;
+CREATE USER MAPPING
+postgres=# CREATE FOREIGN TABLE ghan_table ( ID integer NOT NULL, NAME varchar(30),SALARY integer ) SERVER jdbc_serv4 OPTIONS (table 'TABLEA');                                                                                 
+CREATE FOREIGN TABLE
+postgres=# select * from ghan_table                                                                                                                                                                                                   
+;
+  id  |    name    | salary 
+------+------------+--------
+ 1001 | SAM        |  10000
+ 1002 | PAM        |   9500
+ 1003 | CAM        |  12500
+ 1004 | RAM        |   7500
+ 1005 | HAM        |  20000
+ 2001 | SAM        |  10000
+ 2002 | PAM        |   9500
+ 2003 | CAM        |  12500
+ 2004 | RAM        |   7500
+ 2005 | HAM        |  20000
+ 3001 | SAM        |  10000
+ 3002 | PAM        |   9500
+ 3003 | CAM        |  12500
+ 3004 | RAM        |   7500
+ 3005 | HAM        |  20000
+ 4001 | MAS        |   2500
+ 4002 | MAP        |   3570
+ 4003 | MAC        |   4560
+ 4004 | MAR        |   5570
+ 4005 | MAH        |   6750
+(20 rows)
+
+postgres=# 
+
+
+
+
+
+-----Postgresql通过fdw_jdbc连接Oracle外部表
+
+SQL> create table test(id int, name varchar(20))
+  2  ;
+
+表已创建。
+
+SQL> insert into test values (1,'张国汉')
+
+SQL> select * from test;
+
+        ID NAME
+---------- --------------------
+         1 张国汉
+         1 张国汉
+         1 张国汉
+         1 张国汉
+         1 张国汉
+         1 张国汉
+
+已选择6行。
+
+SQL> commit;
+
+提交完成。
+
+SQL>
+
+
+
+postgres=# CREATE SERVER jdbc_serv5 FOREIGN DATA WRAPPER jdbc_fdw OPTIONS(drivername 'oracle.jdbc.driver.OracleDriver',url 'jdbc:oracle:thin:@108.88.3.247:1521:orcl',querytimeout '15',jarfile '/usr/local/pg9.5.5/lib/ojdbc6.jar',maxheapsize '600');
+CREATE SERVER
+postgres=# CREATE USER MAPPING FOR postgres SERVER jdbc_serv5  OPTIONS (username 'zabbix', password 'zabbix');
+CREATE USER MAPPING
+postgres=#  CREATE FOREIGN TABLE ghan_ora ( ID integer NOT NULL, NAME varchar(30)) SERVER jdbc_serv5 OPTIONS (table 'test'); 
+CREATE FOREIGN TABLE
+postgres=# select * from ghan_ora;
+ id |  name  
+----+--------
+  1 | 张国汉
+  1 | 张国汉
+  1 | 张国汉
+(3 rows)
+
+postgres=# 
+
+
+
+
+
+-----Postgresql通过fdw_jdbc连接MSSQL 2008 外部表
+
+
+
+
+
+
+

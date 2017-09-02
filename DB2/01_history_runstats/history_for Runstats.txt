@@ -1,0 +1,105 @@
+*This Tip is to create a history table for runstats
+
+*Populate the table with details as start_time,END_TEIM
+
+* Ability to query as a later point in time for information as below
+
+	& when was RUNSTATS run for a particular table?
+
+        & Did it successfully complete ?
+	
+	& HOW long it has taken to complete RUNSTATS?
+
+	& Track for a given table the time taken for completing RUNSTATS over a period of time 
+		
+	& Tabel with highest RUNSTATS execution time;
+
+
+
+生成历史记录表：
+
+
+
+create table runstats_history
+(
+start_time timestamp,end_time timestamp,
+operation varchar(50),
+schemaname,varhcar(50), tabname varchar(50),
+status char(1),
+duration decimal(26,12) GENERATED ALWAYS AS 
+(end_time-start_time)
+
+
+)
+
+
+
+查看指定schmas表生成 RUNSTAT
+
+[db2inst2@db2 bash]$ db2 -x "select 'db2 RUNSTATS ON TABLE '||RTRIM(Ltrim(TABLE_SCHEMA))||'.'||RTRIM(Ltrim(TABLE_NAME))||' AND INDEXES ALL ALLOW READ ACCESS ' from SYSIBM.TABLES WHERE TABLE_SCHEMA='GHACEPS1 ' and TABLE_TYPE='BASE TABLE'" > ghepsdb1.sql
+
+
+
+执行运行脚本：
+
+
+[db2inst2@db2 bash]$ ./myeps.sh 
+
+
+
+
+
+[db2inst2@db2 bash]$ more myeps.sh 
+db2 connect to dhepsdb1
+file=/home/db2inst2/tip01/bash/ghepsdb1.sql
+while read line
+do
+status=F
+echo $status at start time
+start_time=`date +"%Y-%m-%d-%H.%m.%S"`
+echo $start_tim
+${line}
+if [ "$?" -eq 0 ]
+then	
+	status=S
+
+fi
+end_time=`date +"%Y-%m-%d-%H.%m.%S"`
+echo $end_time
+echo $status at end time
+echo $line | awk -v st="$start_time" -v et="$end_time" -v ss="$status" '{ split($5,s,".");print st,et,$2,s[1],s[2],ss;}' >> /home/db2inst2/tip01/bash/ddd.out
+
+
+done < "$file"
+
+db2 connect reset
+
+
+
+
+
+
+
+
+
+
+处理输出文档：
+
+
+[db2inst2@db2 bash]$ sed -e 's/\s/,/g' ddd.out  >> ddd.del
+
+
+
+
+指入
+
+
+[db2inst2@db2 bash]$ db2 import from ddd.del of del insert into   runstats_history
+
+
+
+
+
+[db2inst2@db2 bash]$ db2 "select start_time,end_time,operation,schemaname,tabname,status, day(duration)|| ' Days '|| hour(duration)||' Hours '||minute(duration)||' Minutes '||second(duration) ||' Second ' as duration from runstats_history"
+
+

@@ -1,0 +1,747 @@
+
+
+一、编目远程数据库
+
+1、查看远程名数据库服务名
+[db2inst4@db2-node01 ~]$ db2 get dbm cfg |grep SVCENAME
+ TCP/IP 服务名称                              (SVCENAME) = 60000
+ SSL 服务名称                             (SSL_SVCENAME) = 
+[db2inst4@db2-node01 ~]$ 
+
+2、在本地实列编目数据库
+
+[db2inst1@db2 ~]$  db2 catalog tcpip node node_106 remote 108.88.3.106 server 60000
+DB20000I  CATALOG TCPIP NODE 命令成功完成。
+DB21056W  直到刷新目录高速缓存之后，目录更改才生效。
+
+[db2inst1@db2 ~]$ db2 catalog db test as test106 at node node_106
+DB20000I  CATALOG DATABASE 命令成功完成。
+DB21056W  直到刷新目录高速缓存之后，目录更改才生效。
+
+
+3、查看节点信息
+
+[db2inst1@db2 ~]$ db2 LIST NODE DIRECTORY
+
+ 节点目录
+
+ 目录中的条目数 = 2
+
+节点 1 条目：
+
+ 节点名                          = DB2
+ 注释                            =
+ 目录条目类型                    = LOCAL
+ 协议                            = TCPIP
+ 主机名                          = 127.0.0.1
+ 服务名称             = 50000
+
+节点 2 条目：
+
+ 节点名                          = NODE_106
+ 注释                            =
+ 目录条目类型                    = LOCAL
+ 协议                            = TCPIP
+ 主机名                          = 108.88.3.106
+ 服务名称             = 60000
+
+‘
+
+
+4、查看本地编目数据库
+[db2inst1@db2 ~]$ db2 list db directory
+
+
+ 数据库别名                      = TANK
+ 数据库名称                      = TANK
+ 本地数据库目录                  = /home/db2inst1
+ 数据库发行版级别                = d.00
+ 注释                            =
+ 目录条目类型                    = 间接
+ 目录数据库分区号                = 0
+ 备用服务器主机名                =
+ 备用服务器端口号                =
+
+数据库 6 条目：
+
+ 数据库别名                      = TEST106
+ 数据库名称                      = TEST
+ 节点名                          = NODE_106
+ 数据库发行版级别                = d.00
+ 注释                            =
+ 目录条目类型                    = 远程
+ 目录数据库分区号                = -1
+ 备用服务器主机名                =
+ 备用服务器端口号                =
+
+[db2inst1@db2 ~]$ db2 connect to test106 user db2inst4 USING db2inst4
+
+   数据库连接信息
+
+ 数据库服务器         = DB2/LINUXX8664 9.7.5
+ SQL 授权标识         = DB2INST4
+ 本地数据库别名       = TEST106
+
+[db2inst1@db2 ~]$ 
+
+
+
+
+
+
+[db2inst2@db2-node01 ~]$ 
+
+
+TEST 源数据库节点运行：
+
+
+db2 "create table DB2INST2.TABLEA(id integer,name char(10),salary integer)"
+db2 "insert into DB2INST2.TABLEA values(1001,'SAM',10000)"
+db2 "insert into DB2INST2.TABLEA values(1002,'PAM',9500)"
+db2 "insert into DB2INST2.TABLEA values(1003,'CAM',12500)"
+db2 "insert into DB2INST2.TABLEA values(1004,'RAM',7500)"
+db2 "insert into DB2INST2.TABLEA values(1005,'HAM',20000)"
+
+db2 "create table DB2INST2.TABLEB(id integer,name char(10),salary integer)"
+db2 "insert into DB2INST2.TABLEB values(2001,'SAM',10000)"
+db2 "insert into DB2INST2.TABLEB values(2002,'PAM',9500)"
+db2 "insert into DB2INST2.TABLEB values(2003,'CAM',12500)"
+db2 "insert into DB2INST2.TABLEB values(2004,'RAM',7500)"
+db2 "insert into DB2INST2.TABLEB values(2005,'HAM',20000)"
+
+db2 "create table FOO.TABLEC(id integer not null primary key,name char(10),salary integer)"
+db2 "insert into FOO.TABLEC values(3001,'SAM',10000)"
+db2 "insert into FOO.TABLEC values(3002,'PAM',9500)"
+db2 "insert into FOO.TABLEC values(3003,'CAM',12500)"
+db2 "insert into FOO.TABLEC values(3004,'RAM',7500)"
+db2 "insert into FOO.TABLEC values(3005,'HAM',20000)"
+
+db2 "create table FOO.TABLED(id integer,lastname char(10))"
+db2 "ALTER TABLE FOO.TABLED ADD CONSTRAINT EMP_LNAME FOREIGN KEY (ID) REFERENCES FOO.TABLEC"
+db2 "insert into FOO.TABLED values(3001,'MAS')"
+db2 "insert into FOO.TABLED values(3002,'MAP')"
+db2 "insert into FOO.TABLED values(3003,'MAC')"
+db2 "insert into FOO.TABLED values(3003,'MAC')"
+db2 "insert into FOO.TABLED values(3003,'MAC')"
+
+              =
+
+
+
+导入方法一
+
+
+1、采用load with cursor 方式
+
+DB2 LOAD WITH CURSOR: 
+
+
+[db2inst1@db2 ~]$  db2 connect to tank
+
+   数据库连接信息
+
+ 数据库服务器         = DB2/LINUXX8664 9.7.5
+ SQL 授权标识         = DB2INST1
+ 本地数据库别名       = TANK
+
+[db2inst1@db2 ~]$ db2 "create table DB2INST2.TABLEA(id integer,name char(10),salary integer)"
+DB20000I  SQL 命令成功完成。
+[db2inst1@db2 ~]$ db2 "drop table DB2INST2.TABLEA"
+DB20000I  SQL 命令成功完成。
+[db2inst1@db2 ~]$  db2 connect to tank
+
+   数据库连接信息
+
+ 数据库服务器         = DB2/LINUXX8664 9.7.5
+ SQL 授权标识         = DB2INST1
+ 本地数据库别名       = TANK
+
+[db2inst1@db2 ~]$ db2 "create table DB2INST1.MYTABLE(id integer,name char(10),salary integer)"
+DB20000I  SQL 命令成功完成。
+[db2inst1@db2 ~]$ db2 declare mycur cursor database TEST106 user db2inst4 using db2inst4 for select id,name,salary from db2inst2.tableA    
+DB20000I  SQL 命令成功完成。
+[db2inst1@db2 ~]$  db2 load from mycur of cursor insert into db2inst1.mytable
+SQL3501W  由于禁用数据库正向恢复，因此表所驻留的表空间将
+不被置于备份暂挂状态。
+
+SQL3039W  可供 DATA BUFFER 的 LOAD 使用的内存禁止完全 LOAD
+并行性。将使用装入并行性 "4"。
+
+SQL3253N  实用程序正在开始通过 SQL 语句 " select id,name,salary
+from db2inst2.tableA" 来从数据库 "TEST106" 装入数据。
+
+SQL3500W  在时间 "2017-01-11 21:44:51.822168"，实用程序在开始
+"LOAD"。
+
+SQL3519W  开始装入一致点。输入记录数 = "0"。
+
+SQL3520W  “装入一致点”成功。
+
+SQL3110N  实用程序已完成处理。从输入文件读了 "5" 行。
+
+SQL3519W  开始装入一致点。输入记录数 = "5"。
+
+SQL3520W  “装入一致点”成功。
+
+SQL3515W  在时间 "2017-01-11 21:44:52.121959"，实用程序已经完成了
+"LOAD"。
+
+
+读取行数         = 5
+跳过行数         = 0
+装入行数         = 5
+拒绝行数         = 0
+删除行数         = 0
+落实行数         = 5
+
+[db2inst1@db2 ~]$ 
+
+[db2inst1@db2 ~]$ db2 "select * from db2inst1.mytable"
+
+ID          NAME       SALARY     
+----------- ---------- -----------
+       1001 SAM              10000
+       1002 PAM               9500
+       1003 CAM              12500
+       1004 RAM               7500
+       1005 HAM              20000
+
+  5 条记录已选择。
+
+[db2inst1@db2 ~]$ 
+
+
+
+
+
+
+导入方法二
+
+
+
+
+
+采用 DB2MOVE WITH COPY ACTION:
+
+db2move <srcdbname> COPY -sn <schemaname1,2,3> -tf <filename::"SCHEMA1"."TABLE NAME1"> -co TARGET_DB <tardbname> user <taruid> using <tarpwd> MODE [DDL_AND_LOAD,DDL_ONLY,LOAD_ONLY] -u <srcuid> -p <srcpwd>
+
+1、采用db2move copy 仅导入数据
+
+[db2inst1@db2 ~]$ db2 connect to tank
+
+   数据库连接信息
+
+ 数据库服务器         = DB2/LINUXX8664 9.7.5
+ SQL 授权标识         = DB2INST1
+ 本地数据库别名       = TANK
+
+[db2inst1@db2 ~]$ db2 "create table DB2INST2.TABLEA(id integer,name char(10),salary integer)"
+DB20000I  SQL 命令成功完成。
+[db2inst1@db2 ~]$ db2 "create table FOO.TABLEC(id integer not null primary key,name char(10),salary integer)"
+DB20000I  SQL 命令成功完成。
+
+[db2inst1@db2 ~]$ db2move TEST106 COPY -tn \"DB2INST2\".\"TABLEA\",\"FOO\".\"TABLEC\" -co TARGET_DB TANK user db2inst1 using db2inst1 MODE "LOAD_ONLY" -u db2inst4 -p db2inst4
+
+Application code page not determined, using ANSI codepage 1208
+
+*****  DB2MOVE  *****
+
+Action:  COPY
+
+Start time:  Wed Jan 11 21:49:59 2017
+
+
+All table names matching:  "DB2INST2"."TABLEA"; "FOO"."TABLEC"; 
+
+Connecting to database TEST106 ... successful!  Server : DB2 Common Server V9.7.5
+
+Start Load Phase :
+
+
+db2move finished successfully
+
+
+
+Files generated:
+-----------------
+COPYSCHEMA.20170111214959.msg
+LOADTABLE.20170111214959.MSG
+
+Please delete these files when they are no longer needed.
+
+
+
+
+[db2inst2@db2-node01 ~]$ db2 "SELECT * FROM FOO.TABLEC"
+
+ID          NAME       SALARY     
+----------- ---------- -----------
+       3001 SAM              10000
+       3002 PAM               9500
+       3003 CAM              12500
+       3004 RAM               7500
+       3005 HAM              20000
+
+  5 条记录已选择。
+
+
+
+
+[db2inst1@db2 ~]$  db2 "SELECT * FROM FOO.TABLEC"
+
+ID          NAME       SALARY     
+----------- ---------- -----------
+       3001 SAM              10000
+       3002 PAM               9500
+       3003 CAM              12500
+       3004 RAM               7500
+       3005 HAM              20000
+
+  5 条记录已选择。
+
+[db2inst1@db2 ~]$  db2 "SELECT * FROM DB2INST2.TABLEA"
+
+ID          NAME       SALARY     
+----------- ---------- -----------
+       1001 SAM              10000
+       1002 PAM               9500
+       1003 CAM              12500
+       1004 RAM               7500
+       1005 HAM              20000
+
+  5 条记录已选择。
+
+[db2inst1@db2 ~]$ 
+
+
+2、采用db2move copy 使有指定导入表且仅导入数据
+
+[db2inst1@db2 ~]$ more  tbname.txt 
+"DB2INST2"."TABLEA"
+ "FOO"."TABLEC" 
+[db2inst1@db2 ~]$ 
+
+
+[db2inst1@db2 ~]$ db2move TEST106 COPY -tf tbname.txt -co TARGET_DB TANK user db2inst1 using db2inst1 MODE "LOAD_ONLY" -u db2inst4 -p db2inst4
+
+
+
+[db2inst1@db2 ~]$  more LOADTABLE.20170111220439.MSG
+SQL3501W  由于禁用数据库正向恢复，因此表所驻留的表空间将
+不被置于备份暂挂状态。
+
+SQL3039W  可供 DATA BUFFER 的 LOAD 使用的内存禁止完全 LOAD
+并行性。将使用装入并行性 "4"。
+
+SQL3254N  实用程序正在开始从数据库 "TEST106" 中的表
+""DB2INST2"".""TABLEA"" 装入数据。
+
+SQL3500W  在时间 "2017-01-11 22:04:42.391733"，实用程序在开始
+"LOAD"。
+
+SQL3519W  开始装入一致点。输入记录数 = "0"。
+
+SQL3520W  “装入一致点”成功。
+
+SQL3110N  实用程序已完成处理。从输入文件读了 "5" 行。
+
+SQL3519W  开始装入一致点。输入记录数 = "5"。
+
+SQL3520W  “装入一致点”成功。
+
+SQL3515W  在时间 "2017-01-11 22:04:42.935579"，实用程序已经完成了
+"LOAD"。
+
+SQL3501W  由于禁用数据库正向恢复，因此表所驻留的表空间将
+不被置于备份暂挂状态。
+
+SQL3039W  可供 DATA BUFFER 的 LOAD 使用的内存禁止完全 LOAD
+并行性。将使用装入并行性 "4"。
+
+SQL3254N  实用程序正在开始从数据库 "TEST106" 中的表 ""FOO    
+"".""TABLEC"" 装入数据。
+
+SQL3500W  在时间 "2017-01-11 22:04:43.419405"，实用程序在开始
+"LOAD"。
+
+SQL3519W  开始装入一致点。输入记录数 = "0"。
+
+SQL3520W  “装入一致点”成功。
+
+SQL3110N  实用程序已完成处理。从输入文件读了 "5" 行。
+
+SQL3519W  开始装入一致点。输入记录数 = "5"。
+
+SQL3520W  “装入一致点”成功。
+
+SQL3515W  在时间 "2017-01-11 22:04:43.638720"，实用程序已经完成了
+"LOAD"。
+
+SQL3500W  在时间 "2017-01-11 22:04:43.639014"，实用程序在开始
+"BUILD"。
+
+SQL3213I  建立索引方式为 "REBUILD"。
+
+SQL3515W  在时间 "2017-01-11 22:04:43.829744"，实用程序已经完成了
+"BUILD"。
+
+
+
+
+
+
+3、采用db2move copy schema 复制方式
+
+
+
+[db2inst1@db2 ~]$ db2move TEST106 COPY -sn DB2INST2,FOO -co TARGET_DB TANK user db2inst1 using db2inst1 MODE "DDL_AND_LOAD" -u db2inst4 -p db2inst4
+
+Application code page not determined, using ANSI codepage 1208
+
+*****  DB2MOVE  *****
+
+Action:  COPY
+
+Start time:  Wed Jan 11 22:08:36 2017
+
+
+All schema names matching:  DB2INST2; FOO; 
+
+Connecting to database TEST106 ... successful!  Server : DB2 Common Server V9.7.5
+
+**ERROR** SYSTOOLSPACE doesn't exist on the source database.
+
+
+Rolled back all changes from the create phase (debuginfo:60).
+
+
+
+db2move failed with -1 (debuginfo:220).
+
+
+
+
+Files generated:
+-----------------
+COPYSCHEMA.20170111220836.msg
+
+Please delete these files when they are no longer needed.
+
+**Error occured -1
+
+End time:  Wed Jan 11 22:08:37 2017
+
+
+在源数据库检查是否存在：SYSTOOLSPACE 
+
+
+[db2inst4@db2-node01 ~]$ db2 "create tablespace SYSTOOLSPACE"
+
+DB21034E  该命令被当作 SQL
+
+[db2inst4@db2-node01 ~]$ db2 list tablespaces
+
+           当前数据库的表空间
+
+ 表空间标识                          = 0
+ 名称                                = SYSCATSPACE
+ 类型                                = 数据库管理空间
+ 内容                                = 所有持久数据。常规表空间。
+ 状态                   = 0x0000
+   详细解释：
+     正常
+
+ 表空间标识                          = 1
+ 名称                                = TEMPSPACE1
+ 类型                                = 系统管理空间
+ 内容                                = 系统临时数据
+ 状态                   = 0x0000
+   详细解释：
+     正常
+
+ 表空间标识                          = 2
+ 名称                                = USERSPACE1
+ 类型                                = 数据库管理空间
+ 内容                                = 所有持久数据。大型表空间。
+ 状态                   = 0x0000
+   详细解释：
+     正常
+
+ 表空间标识                          = 3
+ 名称                                = SYSTOOLSPACE
+ 类型                                = 数据库管理空间
+ 内容                                = 所有持久数据。大型表空间。
+ 状态                   = 0x0000
+   详细解释：
+     正常
+
+
+
+
+
+
+再次执行
+
+
+[db2inst1@db2 ~]$ db2move TEST106 COPY -sn DB2INST2,FOO -co TARGET_DB TANK user db2inst1 using db2inst1 MODE "DDL_AND_LOAD" -u db2inst4 -p db2inst4
+
+Application code page not determined, using ANSI codepage 1208
+
+*****  DB2MOVE  *****
+
+Action:  COPY
+
+Start time:  Wed Jan 11 22:16:19 2017
+
+
+All schema names matching:  DB2INST2; FOO; 
+
+Connecting to database TEST106 ... successful!  Server : DB2 Common Server V9.7.5
+
+Copy schema DB2INST2 to DB2INST2 on the target database TANK
+Copy schema FOO to FOO on the target database TANK
+
+Create DMT :  "SYSTOOLS"."DMT_58763e33a1c87"
+
+Start Load Phase :
+
+
+db2move finished successfully
+
+
+
+Files generated:
+-----------------
+COPYSCHEMA.20170111221619.msg
+LOADTABLE.20170111221619.MSG
+
+Please delete these files when they are no longer needed.
+
+
+End time:  Wed Jan 11 22:16:30 2017
+[db2inst1@db2 ~]$ 
+
+
+
+[db2inst1@db2 ~]$ db2 "SELECT * FROM DB2INST2.TABLEA"
+
+ID          NAME       SALARY     
+----------- ---------- -----------
+       1001 SAM              10000
+       1002 PAM               9500
+       1003 CAM              12500
+       1004 RAM               7500
+       1005 HAM              20000
+
+  5 条记录已选择。
+
+[db2inst1@db2 ~]$ db2 "SELECT * FROM DB2INST2.TABLEB"
+
+ID          NAME       SALARY     
+----------- ---------- -----------
+       2001 SAM              10000
+       2002 PAM               9500
+       2003 CAM              12500
+       2004 RAM               7500
+       2005 HAM              20000
+
+  5 条记录已选择。
+
+[db2inst1@db2 ~]$ db2 "SELECT * FROM FOO.TABLEC"
+
+ID          NAME       SALARY     
+----------- ---------- -----------
+       3001 SAM              10000
+       3002 PAM               9500
+       3003 CAM              12500
+       3004 RAM               7500
+       3005 HAM              20000
+
+  5 条记录已选择。
+
+[db2inst1@db2 ~]$ db2 "SELECT * FROM FOO.TABLED"
+
+ID          LASTNAME  
+----------- ----------
+       3001 MAS       
+       3002 MAP       
+       3003 MAC       
+       3003 MAC       
+       3003 MAC       
+
+  5 条记录已选择。
+
+[db2inst1@db2 ~]$ 
+
+
+
+4、采用db2move copy 先导DDL和后导入数据库方式
+
+[db2inst1@db2 ~]$ db2 DROP TABLE DB2INST2.TABLEA
+DB20000I  SQL 命令成功完成。
+[db2inst1@db2 ~]$ db2 DROP TABLE DB2INST2.TABLEB
+DB20000I  SQL 命令成功完成。
+[db2inst1@db2 ~]$ db2 DROP TABLE FOO.TABLEC
+DB20000I  SQL 命令成功完成。
+[db2inst1@db2 ~]$ db2 DROP TABLE FOO.TABLED
+DB20000I  SQL 命令成功完成。
+[db2inst1@db2 ~]$ db2 DROP SCHEMA DB2INST2 RESTRICT
+DB20000I  SQL 命令成功完成。
+[db2inst1@db2 ~]$ db2 DROP SCHEMA FOO RESTRICT
+DB20000I  SQL 命令成功完成。
+[db2inst1@db2 ~]$ db2move TEST106 COPY -sn DB2INST2,FOO -co TARGET_DB TANK user db2inst1 using db2inst1 MODE "DDL_ONLY" -u db2inst4 -p db2inst4
+
+Application code page not determined, using ANSI codepage 1208
+
+*****  DB2MOVE  *****
+
+Action:  COPY
+
+Start time:  Wed Jan 11 22:41:02 2017
+
+
+All schema names matching:  DB2INST2; FOO; 
+
+Connecting to database TEST106 ... successful!  Server : DB2 Common Server V9.7.5
+
+Copy schema DB2INST2 to DB2INST2 on the target database TANK
+Copy schema FOO to FOO on the target database TANK
+
+Create DMT :  "SYSTOOLS"."DMT_587643ff130e2"
+
+
+db2move finished successfully
+
+
+
+Files generated:
+-----------------
+COPYSCHEMA.20170111224102.msg
+
+Please delete these files when they are no longer needed.
+
+
+End time:  Wed Jan 11 22:41:04 2017
+[db2inst1@db2 ~]$ db2 "SELECT * FROM DB2INST2.TABLEA"
+
+ID          NAME       SALARY     
+----------- ---------- -----------
+
+  0 条记录已选择。
+
+[db2inst1@db2 ~]$ db2 "SELECT * FROM DB2INST2.TABLEB"
+
+ID          NAME       SALARY     
+----------- ---------- -----------
+
+  0 条记录已选择。
+
+[db2inst1@db2 ~]$ db2 "SELECT * FROM FOO.TABLEC"
+
+ID          NAME       SALARY     
+----------- ---------- -----------
+
+  0 条记录已选择。
+
+[db2inst1@db2 ~]$ db2 "SELECT * FROM FOO.TABLED"
+
+ID          LASTNAME  
+----------- ----------
+
+  0 条记录已选择。
+
+[db2inst1@db2 ~]$ 
+
+
+[db2inst1@db2 ~]$ more tbname.txt 
+"DB2INST2"."TABLEA"
+"DB2INST2"."TABLEB"
+"FOO"."TABLEC" 
+"FOO"."TABLED"
+[db2inst1@db2 ~]$
+
+
+
+[db2inst1@db2 ~]$ db2move TEST106 COPY -tf tbname.txt -co TARGET_DB TANK user db2inst1 using db2inst1 MODE "LOAD_ONLY" -u db2inst4 -p db2inst4
+
+Application code page not determined, using ANSI codepage 1208
+
+*****  DB2MOVE  *****
+
+Action:  COPY
+
+Start time:  Wed Jan 11 22:45:30 2017
+
+
+All table names matching:  
+
+Connecting to database TEST106 ... successful!  Server : DB2 Common Server V9.7.5
+
+Start Load Phase :
+
+
+db2move finished successfully
+
+
+
+Files generated:
+-----------------
+COPYSCHEMA.20170111224530.msg
+LOADTABLE.20170111224530.MSG
+
+Please delete these files when they are no longer needed.
+
+
+End time:  Wed Jan 11 22:45:34 2017
+[db2inst1@db2 ~]$ db2 "SELECT * FROM FOO.TABLED"
+
+ID          LASTNAME  
+----------- ----------
+SQL0668N  不允许对表 "FOO.TABLED" 执行操作，原因码为 "1"。 
+SQLSTATE=57016
+
+
+[db2inst1@db2 ~]$ db2 -tsvf 123.sql 
+EXPORT TO 345.sql OF DEL MODIFIED BY nochardel with gen(tabname, seq) as( select rtrim(tabschema) || '.' || rtrim(tabname) as tabname, row_number() over (partition by status) as seq from  syscat.tables WHERE status='C' ),r(a, seq1) as (select CAST(tabname as VARCHAR(3900)), seq from  gen where seq=1 union all select r.a || ','|| rtrim(gen.tabname), gen.seq from gen , r where (r.seq1+1)=gen.seq ), r1 as (select a, seq1 from r) select 'SET INTEGRITY FOR ' || a || ' IMMEDIATE CHECKED;' from r1 where seq1=(select max(seq1) from r1)
+SQL0347W  递归公共表表达式 "DB2INST1.R" 可能包含无限循环。 
+SQLSTATE=01605
+
+SQL3104N  EXPORT 实用程序 正在开始将数据导出至文件 "345.sql"。
+
+SQL3105N  Export 实用程序已经完成导出 "1" 行。
+
+
+导出的行数：1
+
+
+[db2inst1@db2 ~]$ more 345.sql 
+SET INTEGRITY FOR FOO.TABLEC,FOO.TABLED IMMEDIATE CHECKED;
+[db2inst1@db2 ~]$ db2 -tsvf 345.sql 
+SET INTEGRITY FOR FOO.TABLEC,FOO.TABLED IMMEDIATE CHECKED
+DB20000I  SQL 命令成功完成。
+
+[db2inst1@db2 ~]$ db2 "SELECT * FROM FOO.TABLED"
+
+ID          LASTNAME  
+----------- ----------
+       3001 MAS       
+       3002 MAP       
+       3003 MAC       
+       3003 MAC       
+       3003 MAC       
+
+  5 条记录已选择。
+
+[db2inst1@db2 ~]$ 
+
+
+
+
+
+
+
+
+
+
+
+

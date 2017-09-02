@@ -1,0 +1,182 @@
+
+
+
+
+第一部份查看：
+
+
+
+[db2inst4@db2-node01 ~]$ db2 get db cfg  |grep MON
+ Request metrics                       (MON_REQ_METRICS) = BASE
+ Activity metrics                      (MON_ACT_METRICS) = BASE
+ Object metrics                        (MON_OBJ_METRICS) = BASE
+
+
+
+
+
+
+Heavy Read/Write Activity in a Table:
+
+
+[db2inst4@db2-node01 ~]$  db2 "SELECT  substr(tabschema,1,20) as TABSCHMAE,substr(tabname,1,20) as TBNAME ,rows_read,rows_inserted,rows_updated,rows_deleted,table_scans FROM TABLE(MON_GET_TABLE('DB2INST4','TABLEA',-2))"
+
+TABSCHMAE            TBNAME               ROWS_READ            ROWS_INSERTED        ROWS_UPDATED         ROWS_DELETED         TABLE_SCANS         
+-------------------- -------------------- -------------------- -------------------- -------------------- -------------------- --------------------
+DB2INST4             TABLEA                                 60                    0                    0                    0                    3
+
+  1 record(s) selected.
+
+[db2inst4@db2-node01 ~]$ 
+
+
+
+另一会话：
+
+
+[db2inst4@db2-node01 ~]$ db2 "update tablea set NAME='TANK' where ID <2001"
+DB20000I  The SQL command completed successfully.
+[db2inst4@db2-node01 ~]$ 
+
+
+
+查看控监纪录
+
+
+[db2inst4@db2-node01 ~]$  db2 "SELECT  substr(tabschema,1,20) as TABSCHMAE,substr(tabname,1,20) as TBNAME ,rows_read,rows_inserted,rows_updated,rows_deleted,table_scans FROM TABLE(MON_GET_TABLE('DB2INST4','',-2))"
+
+TABSCHMAE            TBNAME               ROWS_READ            ROWS_INSERTED        ROWS_UPDATED         ROWS_DELETED         TABLE_SCANS         
+-------------------- -------------------- -------------------- -------------------- -------------------- -------------------- --------------------
+DB2INST4             TABLEA                                100                    0                    5                    0                    5
+
+  1 record(s) selected.
+
+
+另一会话：
+
+
+[db2inst4@db2-node01 ~]$ db2 "insert into DB2INST4.TABLEA values(4004,'MAR',55790)"
+
+
+
+查看控监纪录
+
+
+[db2inst4@db2-node01 ~]$  db2 "SELECT  substr(tabschema,1,20) as TABSCHMAE,substr(tabname,1,20) as TBNAME ,rows_read,rows_inserted,rows_updated,rows_deleted,table_scans FROM TABLE(MON_GET_TABLE('DB2INST4','',-2))"
+
+TABSCHMAE            TBNAME               ROWS_READ            ROWS_INSERTED        ROWS_UPDATED         ROWS_DELETED         TABLE_SCANS         
+-------------------- -------------------- -------------------- -------------------- -------------------- -------------------- --------------------
+DB2INST4             TABLEA                                100                    1                    5                    0                    5
+
+  1 record(s) selected.
+
+[db2inst4@db2-node01 ~]$
+
+
+
+表锁监控：
+
+
+第一个话：
+
+修改数据库对象监控 :EXTENDED
+[db2inst4@db2-node01 tips05]$   db2 "UPDATE DB CFG FOR TEST USING MON_OBJ_METRICS EXTENDED "
+DB20000I  The UPDATE DATABASE CONFIGURATION command completed successfully.
+[db2inst4@db2-node01 tips05]$ 
+
+
+
+[db2inst4@db2-node01 tips05]$ db2 +c "select * from tablea with rr"
+
+ID          NAME       SALARY     
+----------- ---------- -----------
+       1001 TANK             10000
+       1002 TANK              9500
+       1003 TANK             12500
+       1004 TANK              7500
+       1005 TANK             20000
+       2001 SAM              10000
+       2002 PAM               9500
+       2003 CAM              12500
+       2004 RAM               7500
+       2005 HAM              20000
+       3001 SAM              10000
+       3002 PAM               9500
+       3003 CAM              12500
+       3004 RAM               7500
+       3005 HAM              20000
+       4001 MAS               2500
+       4002 MAP               3570
+       4003 MAC               4560
+       4004 MAR               5570
+       4005 MAH               6750
+       4004 MAR              55790
+
+  21 record(s) selected.
+
+[db2inst4@db2-node01 tips05]$ 
+
+
+第二个会话：
+
+
+[db2inst4@db2-node01 ~]$ db2 +c  "insert into DB2INST4.TABLEA values(4004,'MAR',55790)"
+
+
+
+一直等待直到第一句话rollback
+
+
+
+第三个会话:
+
+[db2inst4@db2-node01 ~]$ db2 "SELECT tabschema,tabname,LOCK_WAIT_TIME,LOCK_WAITS FROM TABLE(MON_GET_TABLE('DB2INST4','TABLEA',-2))"
+
+TABSCHEMA                                                                                                                        TABNAME                                                                                                                          LOCK_WAIT_TIME       LOCK_WAITS          
+-------------------------------------------------------------------------------------------------------------------------------- -------------------------------------------------------------------------------------------------------------------------------- -------------------- --------------------
+DB2INST4                                                                                                                         TABLEA                                                                                                                                              0                    0
+
+  1 record(s) selected.
+
+[db2inst4@db2-node01 ~]$ 
+
+
+[db2inst4@db2-node01 ~]$ db2 "SELECT tabschema,tabname,LOCK_WAIT_TIME,LOCK_WAITS FROM TABLE(MON_GET_TABLE('DB2INST4','TABLEA',-2))"
+
+TABSCHEMA                                                                                                                        TABNAME                                                                                                                          LOCK_WAIT_TIME       LOCK_WAITS          
+-------------------------------------------------------------------------------------------------------------------------------- -------------------------------------------------------------------------------------------------------------------------------- -------------------- --------------------
+DB2INST4                                                                                                                         TABLEA                                                                                                                                          99943                    1
+
+  1 record(s) selected.
+
+[db2inst4@db2-node01 ~]$ 
+
+
+
+查看命中率
+
+
+[db2inst4@db2-node01 ~]$ db2 "SELECT tabschema,tabname,rows_read,OBJECT_DATA_P_READS,OBJECT_DATA_L_READS FROM TABLE(MON_GET_TABLE('DB2INST4','TABLEA',-2))"
+
+TABSCHEMA                                                                                                                        TABNAME                                                                                                                          ROWS_READ            OBJECT_DATA_P_READS  OBJECT_DATA_L_READS 
+-------------------------------------------------------------------------------------------------------------------------------- ----------------------------------- -------------------- -------------------- --------------------
+DB2INST4                                                                                                                         TABLEA                                                                                                                                  380                    0                    4
+
+  1 record(s) selected.
+
+[db2inst4@db2-node01 ~]$ 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

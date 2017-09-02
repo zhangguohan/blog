@@ -1,0 +1,138 @@
+如何在原表中增加修改保留列
+
+
+一、新建测试表：
+
+[db2inst1@db2 ~]$ db2 "create table emp(id integer,name char(10),salary integer)"
+DB20000I  SQL 命令成功完成。
+[db2inst1@db2 ~]$ db2 "insert into emp values(1001,'SAM',10000)"
+DB20000I  SQL 命令成功完成。
+[db2inst1@db2 ~]$ db2 "insert into emp values(1002,'PAM',9500)"
+DB20000I  SQL 命令成功完成。
+[db2inst1@db2 ~]$ db2 "insert into emp values(1003,'MAM',12500)"
+DB20000I  SQL 命令成功完成。
+[db2inst1@db2 ~]$ db2 "insert into emp values(1004,'DAM',7500)"
+DB20000I  SQL 命令成功完成。
+[db2inst1@db2 ~]$ db2 "insert into emp values(1005,'KAM',20000)"
+DB20000I  SQL 命令成功完成。
+
+二、添加保留列
+[db2inst1@db2 ~]$ db2 "alter table emp add column rev_salary integer generated always as (salary*50/100)"
+DB21034E  该命令被当作 SQL
+语句来处理，因为它是无效的“命令行处理器”命令。在 SQL
+处理期间，它返回：
+SQL20054N  表 "DB2INST1.EMP"
+所处的状态对该操作无效。原因码："22"。  SQLSTATE=55019
+[db2inst1@db2 ~]$ 
+
+三、查看出错代码
+
+[db2inst1@db2 ~]$ db2 ? "SQL20054N"
+
+
+SQL20054N  表 "<表名>" 所处的状态对该操作无效。原因码："<原因
+      码>"。
+
+说明： 
+
+该表所处的状态不允许执行该操作。"<原因码>" 指示阻止执行该操作的表所处的
+状态。
+
+
+22       
+
+         在改变该表之前使用 SET INTEGRITY FOR "<表名>" OFF。然后改变表
+         并使用 SET INTEGRITY FOR "<表名>" IMMEDIATE CHECKED FORCE 
+         GENERATED 来为新列或已改变的列生成值。
+
+
+四、关闭表完整性检查
+
+[db2inst1@db2 ~]$ db2 set integrity for emp off
+DB20000I  SQL 命令成功完成。
+
+五、添加保留列
+[db2inst1@db2 ~]$ db2 "alter table emp add column rev_salary integer generated always as (salary*50/100)"
+DB20000I  SQL 命令成功完成。
+[db2inst1@db2 ~]$ db2 load query table emp
+表状态：
+  设置完整性暂挂
+[db2inst1@db2 ~]$ db2 set integrity for emp immediate checked force generated
+DB20000I  SQL 命令成功完成。
+[db2inst1@db2 ~]$ db2 load query table emp
+表状态：
+  正常
+
+六、检查添加情况
+[db2inst1@db2 ~]$ db2 "select * from emp"
+
+ID          NAME       SALARY      REV_SALARY 
+----------- ---------- ----------- -----------
+       1001 SAM              10000        5000
+       1002 PAM               9500        4750
+       1003 MAM              12500        6250
+       1004 DAM               7500        3750
+       1005 KAM              20000       10000
+
+  5 条记录已选择。
+
+[db2inst1@db2 ~]$
+
+
+[db2inst1@db2 ~]$  db2 "insert into emp(ID, NAME, SALARY)values(1006,'DAAd',70000)"
+DB20000I  SQL 命令成功完成。
+[db2inst1@db2 ~]$ db2 "select * from emp"
+
+ID          NAME       SALARY      REV_SALARY 
+----------- ---------- ----------- -----------
+       1001 SAM              10000        5000
+       1002 PAM               9500        4750
+       1003 MAM              12500        6250
+       1004 DAM               7500        3750
+       1005 KAM              20000       10000
+       1006 DAAd             70000       35000
+
+  6 条记录已选择。
+
+[db2inst1@db2 ~]$ 
+
+
+
+
+七、修改保留列属性如操作以添加方法一致
+
+[db2inst1@db2 ~]$ db2 "alter table emp alter column rev_salary set expression as (salary*20/100)"
+DB21034E  该命令被当作 SQL
+语句来处理，因为它是无效的“命令行处理器”命令。在 SQL
+处理期间，它返回：
+SQL20054N  表 "DB2INST1.EMP"
+所处的状态对该操作无效。原因码："22"。  SQLSTATE=55019
+[db2inst1@db2 ~]$ db2 set integrity for emp off
+DB20000I  SQL 命令成功完成。
+[db2inst1@db2 ~]$ db2 "alter table emp alter column rev_salary set expression as (salary*20/100)"
+DB20000I  SQL 命令成功完成。
+[db2inst1@db2 ~]$ db2 load query table emp
+表状态：
+  设置完整性暂挂
+[db2inst1@db2 ~]$ db2 set integrity for emp immediate checked force generated
+DB20000I  SQL 命令成功完成。
+[db2inst1@db2 ~]$ db2 load query table emp
+表状态：
+  正常
+[db2inst1@db2 ~]$  db2 "insert into emp(ID, NAME, SALARY)values(1007,'HAAd',80000)"
+DB20000I  SQL 命令成功完成。
+[db2inst1@db2 ~]$ db2 "select * from emp"
+
+ID          NAME       SALARY      REV_SALARY 
+----------- ---------- ----------- -----------
+       1001 SAM              10000        2000
+       1002 PAM               9500        1900
+       1003 MAM              12500        2500
+       1004 DAM               7500        1500
+       1005 KAM              20000        4000
+       1006 DAAd             70000       14000
+       1007 HAAd             80000       16000
+
+  7 条记录已选择。
+
+[db2inst1@db2 ~]$ 

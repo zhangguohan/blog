@@ -1,0 +1,125 @@
+
+
+新建表空间
+
+
+
+
+
+[db2inst1@db2 data]$ db2 "create tablespace mytbsp pagesize 4K managed by database using(file '/home/db2inst1/db2inst1/data/mydata.dbf' 100) extentsize 5 autoresize yes" 
+DB20000I  SQL 命令成功完成。
+[db2inst1@db2 data]$ 
+
+
+
+
+
+[db2inst1@db2 data]$ db2 "create table mytab(name varchar(255)) in mytbsp"
+
+
+
+[db2inst1@db2 data]$ db2 -tsvf sevenk.sql 
+
+
+[db2inst1@db2 data]$  db2 "select DATA_OBJECT_P_SIZE,INDEX_OBJECT_P_SIZE,REORG_PENDING,NUM_REORG_REC_ALTERS,LARGE_RIDS,RECLAIMABLE_SPACE from sysibmadm.admintabinfo where tabname='MYTAB' with ur"
+
+DATA_OBJECT_P_SIZE   INDEX_OBJECT_P_SIZE  REORG_PENDING NUM_REORG_REC_ALTERS LARGE_RIDS RECLAIMABLE_SPACE   
+-------------------- -------------------- ------------- -------------------- ---------- --------------------
+                 840                    0 N                                0 Y                             0
+
+  1 条记录已选择。
+
+[db2inst1@db2 data]$ db2 alter table mytab alter column name set not null 
+DB20000I  SQL 命令成功完成。
+[db2inst1@db2 data]$ db2 alter table mytab alter column name drop not null 
+DB20000I  SQL 命令成功完成。
+[db2inst1@db2 data]$  db2 "select DATA_OBJECT_P_SIZE,INDEX_OBJECT_P_SIZE,REORG_PENDING,NUM_REORG_REC_ALTERS,LARGE_RIDS,RECLAIMABLE_SPACE from sysibmadm.admintabinfo where tabname='MYTAB' with ur"
+
+DATA_OBJECT_P_SIZE   INDEX_OBJECT_P_SIZE  REORG_PENDING NUM_REORG_REC_ALTERS LARGE_RIDS RECLAIMABLE_SPACE   
+-------------------- -------------------- ------------- -------------------- ---------- --------------------
+                 840                    0 Y                                2 Y                             0
+
+  1 条记录已选择。
+
+[db2inst1@db2 data]$ db2 -tsvf sevenk.sql 
+insert into mytab values('ABCDEFGHIJKLMNOPQRSTUVWXYABCDEFGHIJKLMNOPQRSTUVWXYABCDEFGHIJKLMNOPQRSTUVWXYABCDEFGHIJKLMNOPQRSTUVWXY')
+DB21034E  该命令被当作 SQL
+语句来处理，因为它是无效的“命令行处理器”命令。在 SQL
+处理期间，它返回：
+SQL0668N  不允许对表 "DB2INST1.MYTAB" 执行操作，原因码为 "7"。 
+SQLSTATE=57016
+
+[db2inst1@db2 data]$ db2 reorg table mytab
+DB20000I  REORG 命令成功完成。
+[db2inst1@db2 data]$  db2 "select DATA_OBJECT_P_SIZE,INDEX_OBJECT_P_SIZE,REORG_PENDING,NUM_REORG_REC_ALTERS,LARGE_RIDS,RECLAIMABLE_SPACE from sysibmadm.admintabinfo where tabname='MYTAB' with ur"
+
+DATA_OBJECT_P_SIZE   INDEX_OBJECT_P_SIZE  REORG_PENDING NUM_REORG_REC_ALTERS LARGE_RIDS RECLAIMABLE_SPACE   
+-------------------- -------------------- ------------- -------------------- ---------- --------------------
+                 840                    0 N                                0 Y                             0
+
+  1 条记录已选择。
+
+[db2inst1@db2 data]$ 、
+
+
+
+
+[db2inst1@db2 data]$ db2 -tsvf showtabsize.sql 
+select  substr(t.tabschema,1,18) as tabschema , substr(t.tabname,1,40) as tabname , (DATA_OBJECT_P_SIZE + INDEX_OBJECT_P_SIZE)/1024 as tab_size_mb from    syscat.tables t join sysibmadm.admintabinfo ati on t.tabname=ati.tabname and t.tabschema=ati.tabschema where   t.type='T' and t.tabschema not like ('SYS%') order by 3 desc with ur
+
+TABSCHEMA          TABNAME                                  TAB_SIZE_MB         
+------------------ ---------------------------------------- --------------------
+GZQ                T_TS_ZYRYZG_INFO                                          153
+GZQ                T_TS_TZSBJB_INFO                                          113
+GZQ                T_TS_ZYRYZG_INFO_TEMP                                     100
+GZQ                T_TS_ZYRY_INFO                                             93
+GZQ                T_TS_TZSBJB_INFO_0727                                      92
+GZQ                TB_TS_ZYRY_RESULT_INFO                                     80
+GZQ                CMS_ARCHIVE                                                46
+GZQ                T_TS_ZYRYZ_INFO                                            25
+
+
+
+
+
+[db2inst1@db2 data]$ db2 describe table SYSIBMADM.ADMINTABINFO
+
+                                数据类型                      列
+列名                             模式       数据类型名称      长     小数位      NULL
+------------------------------- --------- ------------------- ---------- ----- ------
+TABSCHEMA                       SYSIBM    VARCHAR                    128     0 是    
+TABNAME                         SYSIBM    VARCHAR                    128     0 是    
+TABTYPE                         SYSIBM    CHARACTER                    1     0 是    
+DBPARTITIONNUM                  SYSIBM    SMALLINT                     2     0 是    
+DATA_PARTITION_ID               SYSIBM    INTEGER                      4     0 是    
+AVAILABLE                       SYSIBM    CHARACTER                    1     0 是    
+DATA_OBJECT_L_SIZE              SYSIBM    BIGINT                       8     0 是    
+DATA_OBJECT_P_SIZE              SYSIBM    BIGINT                       8     0 是    
+INDEX_OBJECT_L_SIZE             SYSIBM    BIGINT                       8     0 是    
+INDEX_OBJECT_P_SIZE             SYSIBM    BIGINT                       8     0 是    
+LONG_OBJECT_L_SIZE              SYSIBM    BIGINT                       8     0 是    
+LONG_OBJECT_P_SIZE              SYSIBM    BIGINT                       8     0 是    
+LOB_OBJECT_L_SIZE               SYSIBM    BIGINT                       8     0 是    
+LOB_OBJECT_P_SIZE               SYSIBM    BIGINT                       8     0 是    
+XML_OBJECT_L_SIZE               SYSIBM    BIGINT                       8     0 是    
+XML_OBJECT_P_SIZE               SYSIBM    BIGINT                       8     0 是    
+INDEX_TYPE                      SYSIBM    SMALLINT                     2     0 是    
+REORG_PENDING                   SYSIBM    CHARACTER                    1     0 是    
+INPLACE_REORG_STATUS            SYSIBM    VARCHAR                     10     0 是    
+LOAD_STATUS                     SYSIBM    VARCHAR                     12     0 是    
+READ_ACCESS_ONLY                SYSIBM    CHARACTER                    1     0 是    
+NO_LOAD_RESTART                 SYSIBM    CHARACTER                    1     0 是    
+NUM_REORG_REC_ALTERS            SYSIBM    SMALLINT                     2     0 是    
+INDEXES_REQUIRE_REBUILD         SYSIBM    CHARACTER                    1     0 是    
+LARGE_RIDS                      SYSIBM    CHARACTER                    1     0 是    
+LARGE_SLOTS                     SYSIBM    CHARACTER                    1     0 是    
+DICTIONARY_SIZE                 SYSIBM    BIGINT                       8     0 是    
+BLOCKS_PENDING_CLEANUP          SYSIBM    BIGINT                       8     0 是    
+STATSTYPE                       SYSIBM    CHARACTER                    1     0 是    
+XML_RECORD_TYPE                 SYSIBM    SMALLINT                     2     0 是    
+RECLAIMABLE_SPACE               SYSIBM    BIGINT                       8     0 是    
+XML_DICTIONARY_SIZE             SYSIBM    BIGINT                       8     0 是    
+
+  32 条记录已选择。
+
+[db2inst1@db2 data]$ 

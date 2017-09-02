@@ -1,0 +1,57 @@
+Oracle 11.0.2.3:
+
+108.88.3.247
+
+SID:ORCL
+
+PORT:1521
+
+
+
+
+zabbix/zabbix
+
+
+SQL> create table test(id int, name varchar(20))
+  2  ;
+
+表已创建。
+
+SQL> insert into test values (1,'张国汉')
+
+SQL> select * from test;
+
+        ID NAME
+---------- --------------------
+         1 张国汉
+         1 张国汉
+         1 张国汉
+         1 张国汉
+         1 张国汉
+         1 张国汉
+
+已选择6行。
+
+SQL> commit;
+
+提交完成。
+
+SQL>
+
+
+
+postgres=# CREATE SERVER jdbc_serv5 FOREIGN DATA WRAPPER jdbc_fdw OPTIONS(drivername 'oracle.jdbc.driver.OracleDriver',url 'jdbc:oracle:thin:@108.88.3.247:1521:orcl',querytimeout '15',jarfile '/usr/local/pg9.5.5/lib/ojdbc6.jar',maxheapsize '600');
+CREATE SERVER
+postgres=# CREATE USER MAPPING FOR postgres SERVER jdbc_serv5  OPTIONS (username 'zabbix', password 'zabbix');
+CREATE USER MAPPING
+postgres=#  CREATE FOREIGN TABLE ghan_ora ( ID integer NOT NULL, NAME varchar(30)) SERVER jdbc_serv5 OPTIONS (table 'test'); 
+CREATE FOREIGN TABLE
+postgres=# select * from ghan_ora;
+ id |  name  
+----+--------
+  1 | 张国汉
+  1 | 张国汉
+  1 | 张国汉
+(3 rows)
+
+postgres=# 

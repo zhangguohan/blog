@@ -1,0 +1,53 @@
+ Scripts:
+db2 "describe select * from table(MON_GET_TABLE('','',-2))" > o.out
+
+Heavy Read/Write Activity in a Table:
+db2 "SELECT tabschema,tabname,rows_read,rows_inserted,rows_updated,rows_deleted,table_scans FROM TABLE(MON_GET_TABLE('','',-2))"
+db2 "SELECT tabschema,tabname,rows_read,rows_inserted,rows_updated,rows_deleted,table_scans FROM TABLE(MON_GET_TABLE('DB2INST1','TABLEA',-2))"
+
+LOCK_WAIT_TIME in ms,LOCK_WAITS
+db2 "SELECT tabschema,tabname,LOCK_WAIT_TIME,LOCK_WAITS FROM TABLE(MON_GET_TABLE('DB2INST1','TABLEA',-2))"
+
+Hit Ratio = (1 - (object_data_p_reads + object_xda_p_reads) / (object_data_l_reads + object_xda_l_reads))
+db2 "SELECT tabschema,tabname,rows_read,OBJECT_DATA_P_READS,OBJECT_DATA_L_READS FROM TABLE(MON_GET_TABLE('DB2INST1','TABLEA',-2))"
+
+
+
+
+Set Up Table:
+
+db2 drop table DB2INST4.TABLEA
+db2 drop table DB2INST4.TABLEB
+db2 "create table DB2INST4.TABLEA(id integer,name char(10),salary integer)"
+
+db2 "insert into DB2INST4.TABLEA values(1001,'SAM',10000)"
+db2 "insert into DB2INST4.TABLEA values(1002,'PAM',9500)"
+db2 "insert into DB2INST4.TABLEA values(1003,'CAM',12500)"
+db2 "insert into DB2INST4.TABLEA values(1004,'RAM',7500)"
+db2 "insert into DB2INST4.TABLEA values(1005,'HAM',20000)"
+
+db2 "insert into DB2INST4.TABLEA values(2001,'SAM',10000)"
+db2 "insert into DB2INST4.TABLEA values(2002,'PAM',9500)"
+db2 "insert into DB2INST4.TABLEA values(2003,'CAM',12500)"
+db2 "insert into DB2INST4.TABLEA values(2004,'RAM',7500)"
+db2 "insert into DB2INST4.TABLEA values(2005,'HAM',20000)"
+
+db2 "insert into DB2INST4.TABLEA values(3001,'SAM',10000)"
+db2 "insert into DB2INST4.TABLEA values(3002,'PAM',9500)"
+db2 "insert into DB2INST4.TABLEA values(3003,'CAM',12500)"
+db2 "insert into DB2INST4.TABLEA values(3004,'RAM',7500)"
+db2 "insert into DB2INST4.TABLEA values(3005,'HAM',20000)"
+
+db2 "insert into DB2INST4.TABLEA values(4001,'MAS',2500)"
+db2 "insert into DB2INST4.TABLEA values(4002,'MAP',3570)"
+db2 "insert into DB2INST4.TABLEA values(4003,'MAC',4560)"
+db2 "insert into DB2INST4.TABLEA values(4004,'MAR',5570)"
+db2 "insert into DB2INST4.TABLEA values(4005,'MAH',6750)"
+
+db2 "CREATE TABLE DB2INST4.TABLEB(ID INT, NAME VARCHAR(5))"
+db2 "CREATE INDEX DB2INST4.idx_TABLEB ON DB2INST4.TABLEB (ID ASC)"
+db2 "LOAD FROM /tmp/RANDOMDATA.DEL OF DEL INSERT INTO DB2INST4.TABLEB"
+db2 RUNSTATS ON TABLE DB2INST4.TABLEB ON ALL COLUMNS WITH DISTRIBUTION AND DETAILED INDEXES ALL
+
+db2 "SELECT ID FROM DB2INST4.TABLEB where id between 5000 and 25000"
+db2 "SELECT ID,NAME FROM DB2INST4.TABLEB where id between 5000 and 25000"
