@@ -1,0 +1,872 @@
+1、服务器规划
+
+
+10.0.0.1	mdw --（gtm ）
+10.0.0.2        sdw01（coordinator）
+10.0.0.3        sdw02（datanode）
+10.0.0.4        sdw03（datanode）
+
+
+
+以下操作，对每个服务器节点都适用。 
+关闭防火墙：
+
+[root@localhost ~]# systemctl stop firewalld.service
+[root@localhost ~]# systemctl disable firewalld.service
+
+selinux设置:
+
+[root@localhost ~]#vim /etc/selinux/config
+
+设置SELINUX=disabled，保存退出。
+
+# This file controls the state of SELinux on the system.
+# SELINUX= can take one of these three values:
+#     enforcing - SELinux security policy is enforced.
+#     permissive - SELinux prints warnings instead of enforcing.
+#     disabled - No SELinux policy is loaded.
+SELINUX=disabled
+# SELINUXTYPE= can take one of three two values:
+#     targeted - Targeted processes are protected,
+#     minimum - Modification of targeted policy. Only selected processes are protected.
+#     mls - Multi Level Security protection.
+
+
+2、安装编译所需的库文件-（各节点）
+
+#yum -y install gcc perl-ExtUtils-Embed readline-devel zlib-devel openssl-devel pam pam-devel tcl tcl-devel libxml2-devel libxslt-devel python-devel docbook-style-dsssl flex bison openjade 
+
+3、安装数据库软件（各节点）
+
+#tar -zxvf postgres-xl-9.5r1.5.tar.gz
+
+#cd postgres-xl-9.5r1.5
+
+#./configure --prefix=/usr/local/pgxl-9.5
+#gmake world
+#gmake install-world
+
+
+4、各节新建pgxl用户并配置ssh免密码登录（各节点）
+#useradd pgxl
+
+#chown pgxl:pgxl -R /usr/local/pgxl-9.5 （各节点）
+
+
+在10.0.0.1（GTM）节点配置（root、pgxl用户通信免密码）：
+
+#su - pgxl
+
+#ssh-keygen -t rsa
+
+#cat ~/.ssh/id_rsa.pub>> ~/.ssh/authorized_keys
+
+#chmod 600 ~/.ssh/authorized_keys
+
+将刚生成的认证文件拷贝到另外2台服务器：
+
+scp ~/.ssh/authorized_keyspgxl@10.0.0.2:~/.ssh/
+
+scp ~/.ssh/authorized_keyspgxl@10.0.0.3:~/.ssh/
+scp ~/.ssh/authorized_keyspgxl@10.0.0.4:~/.ssh/
+
+
+
+
+5、配置环境变量（一定要配置.bashrc否则使用pgxc_ctl提示找不到gtminit\pg_ctl等命令） （各节点）
+
+
+
+[pgxl@sdw01 ~]$ more .bashrc 
+# .bashrc
+
+# Source global definitions
+if [ -f /etc/bashrc ]; then
+	. /etc/bashrc
+fi
+
+# Uncomment the following line if you don't like systemctl's auto-paging feature:
+# export SYSTEMD_PAGER=
+
+# User specific aliases and functions
+
+export PGHOME=/usr/local/pgxl-9.5
+
+export LD_LIBRARY_PATH=$PGHOME/lib:$LD_LIBRARY_PATH
+
+export PATH=$PATH:$HOME/bin:$PGHOME/bin
+[pgxl@sdw01 ~]$ more .bash_profile 
+# .bash_profile
+
+# Get the aliases and functions
+if [ -f ~/.bashrc ]; then
+	. ~/.bashrc
+fi
+
+# User specific environment and startup programs
+
+PATH=$PATH:$HOME/.local/bin:$HOME/bin
+
+export PATH
+
+
+export PGHOME=/usr/local/pgxl-9.5
+
+export LD_LIBRARY_PATH=$PGHOME/lib:$LD_LIBRARY_PATH
+
+export PATH=$PATH:$HOME/bin:$PGHOME/bin
+[pgxl@sdw01 ~]$ 
+
+
+
+
+
+
+6、生成集群配置文件：（一个gtm节点，一个coornd节点，二个datanode节点，其它节点构结后期添加）
+
+
+
+在gtm节点上执行
+
+#su - pgxl
+#pgxc_ctl prepare config
+
+#cd /home/pgxl/pgxc_ctl/
+
+# 修改如下：
+
+[pgxl@mdw pgxc_ctl]$ more pgxc_ctl.conf 
+#!/usr/bin/env bash
+#
+# Postgres-XC Configuration file for pgxc_ctl utility. 
+#
+# Configuration file can be specified as -c option from pgxc_ctl command.   Default is
+# $PGXC_CTL_HOME/pgxc_ctl.org.
+#
+# This is bash script so you can make any addition for your convenience to configure
+# your Postgres-XC cluster.
+#
+# Please understand that pgxc_ctl provides only a subset of configuration which pgxc_ctl
+# provide.  Here's several several assumptions/restrictions pgxc_ctl depends on.
+#
+# 1) All the resources of pgxc nodes has to be owned by the same user.   Same user means
+#    user with the same user name.  User ID may be different from server to server.
+#    This must be specified as a variable $pgxcOwner.
+#
+# 2) All the servers must be reacheable via ssh without password.   It is highly recommended
+#    to setup key-based authentication among all the servers.
+#
+# 3) All the databases in coordinator/datanode has at least one same superuser.  Pgxc_ctl
+#    uses this user to connect to coordinators and datanodes.   Again, no password should
+#    be used to connect.  You have many options to do this, pg_hba.conf, pg_ident.conf and
+#    others.  Pgxc_ctl provides a way to configure pg_hba.conf but not pg_ident.conf.   This
+#    will be implemented in the later releases.
+#
+# 4) Gtm master and slave can have different port to listen, while coordinator and datanode
+#    slave should be assigned the same port number as master.
+#
+# 5) Port nuber of a coordinator slave must be the same as its master.
+#
+# 6) Master and slave are connected using synchronous replication.  Asynchronous replication
+#    have slight (almost none) chance to bring total cluster into inconsistent state.
+#    This chance is very low and may be negligible.  Support of asynchronous replication
+#    may be supported in the later release.
+#
+# 7) Each coordinator and datanode can have only one slave each.  Cascaded replication and
+#    multiple slave are not supported in the current pgxc_ctl.
+#
+# 8) Killing nodes may end up with IPC resource leak, such as semafor and shared memory.
+#    Only listening port (socket) will be cleaned with clean command.
+#
+# 9) Backup and restore are not supported in pgxc_ctl at present.   This is a big task and
+#    may need considerable resource.
+#
+#========================================================================================
+#
+#
+# pgxcInstallDir variable is needed if you invoke "deploy" command from pgxc_ctl utility.
+# If don't you don't need this variable.
+pgxcInstallDir=/usr/local/pgxl-9.5
+#---- OVERALL -----------------------------------------------------------------------------
+#
+pgxcOwner=pgxl			# owner of the Postgres-XC databaseo cluster.  Here, we use this
+						# both as linus user and database user.  This must be
+						# the super user of each coordinator and datanode.
+pgxcUser=$pgxcOwner		# OS user of Postgres-XC owner
+
+tmpDir=/tmp					# temporary dir used in XC servers
+localTmpDir=$tmpDir			# temporary dir used here locally
+
+configBackup=n					# If you want config file backup, specify y to this value.
+configBackupHost=pgxc-linker	# host to backup config file
+configBackupDir=$HOME/pgxc		# Backup directory
+configBackupFile=pgxc_ctl.bak	# Backup file name --> Need to synchronize when original changed.
+
+#---- GTM ------------------------------------------------------------------------------------
+
+# GTM is mandatory.  You must have at least (and only) one GTM master in your Postgres-XC cluster.
+# If GTM crashes and you need to reconfigure it, you can do it by pgxc_update_gtm command to update
+# GTM master with others.   Of course, we provide pgxc_remove_gtm command to remove it.  This command
+# will not stop the current GTM.  It is up to the operator.
+
+
+#---- GTM Master -----------------------------------------------
+
+#---- Overall ----
+gtmName=gtm
+gtmMasterServer=mdw
+gtmMasterPort=6666
+gtmMasterDir=/usr/local/pgxl-9.5/data/gtm
+
+#---- Configuration ---
+gtmExtraConfig=none			# Will be added gtm.conf for both Master and Slave (done at initilization only)
+gtmMasterSpecificExtraConfig=none	# Will be added to Master's gtm.conf (done at initialization only)
+
+#---- GTM Slave -----------------------------------------------
+
+# Because GTM is a key component to maintain database consistency, you may want to configure GTM slave
+# for backup.
+
+#---- Overall ------
+gtmSlave=n					# Specify y if you configure GTM Slave.   Otherwise, GTM slave will not be configured a
+nd
+							# all the following variables will be reset.
+gtmSlaveName=gtmSlave
+gtmSlaveServer=node12		# value none means GTM slave is not available.  Give none if you don't configure GTM Slave.
+gtmSlavePort=20001			# Not used if you don't configure GTM slave.
+gtmSlaveDir=/usr/local/pgxl-9.5/data/gtm	# Not used if you don't configure GTM slave.
+# Please note that when you have GTM failover, then there will be no slave available until you configure the slave
+# again. (pgxc_add_gtm_slave function will handle it)
+
+#---- Configuration ----
+gtmSlaveSpecificExtraConfig=none # Will be added to Slave's gtm.conf (done at initialization only)
+
+#---- GTM Proxy -------------------------------------------------------------------------------------------------------
+# GTM proxy will be selected based upon which server each component runs on.
+# When fails over to the slave, the slave inherits its master's gtm proxy.  It should be
+# reconfigured based upon the new location.
+#
+# To do so, slave should be restarted.   So pg_ctl promote -> (edit postgresql.conf and recovery.conf) -> pg_ctl restart
+#
+# You don't have to configure GTM Proxy if you dont' configure GTM slave or you are happy if every component connects
+# to GTM Master directly.  If you configure GTL slave, you must configure GTM proxy too.
+
+#---- Shortcuts ------
+gtmProxyDir=/usr/local/pgxl-9.5/data/gtm_pxy
+
+#---- Overall -------
+gtmProxy=n				# Specify y if you conifugre at least one GTM proxy.   You may not configure gtm proxies
+						# only when you dont' configure GTM slaves.
+						# If you specify this value not to y, the following parameters will be set to default e
+mpty values.
+						# If we find there're no valid Proxy server names (means, every servers are specified
+						# as none), then gtmProxy value will be set to "n" and all the entries will be set to
+						# empty values.
+gtmProxyNames=(gtm_pxy1 gtm_pxy2 gtm_pxy3 gtm_pxy4)	# No used if it is not configured
+gtmProxyServers=(node06 node07 node08 node09)			# Specify none if you dont' configure it.
+gtmProxyPorts=(20001 20001 20001 20001)				# Not used if it is not configured.
+gtmProxyDirs=($gtmProxyDir $gtmProxyDir $gtmProxyDir $gtmProxyDir)	# Not used if it is not configured.
+
+#---- Configuration ----
+gtmPxyExtraConfig=none		# Extra configuration parameter for gtm_proxy.  Coordinator section has an example.
+gtmPxySpecificExtraConfig=(none none none none)
+
+#---- Coordinators ----------------------------------------------------------------------------------------------------
+
+#---- shortcuts ----------
+coordMasterDir=/usr/local/pgxl-9.5/data/coord
+coordSlaveDir=$HOME/pgxc/nodes/coord_slave
+coordArchLogDir=$HOME/pgxc/nodes/coord_archlog
+
+#---- Overall ------------
+coordNames=(coord1)		# Master and slave use the same name
+coordPorts=(5432)			# Master ports
+poolerPorts=(6668)			# Master pooler ports
+coordPgHbaEntries=(10.0.0.0/24)				# Assumes that all the coordinator (master/slave) accepts
+												# the same connection
+												# This entry allows only $pgxcOwner to 
+connect.
+												# If you'd like to setup another connec
+tion, you should
+												# supply these entries through files sp
+ecified below.
+# Note: The above parameter is extracted as "host all all 0.0.0.0/0 trust".   If you don't want
+# such setups, specify the value () to this variable and suplly what you want using coordExtraPgHba
+# and/or coordSpecificExtraPgHba variables.
+#coordPgHbaEntries=(::1/128)	# Same as above but for IPv6 addresses
+
+#---- Master -------------
+coordMasterServers=(sdw01)		# none means this master is not available
+coordMasterDirs=($coordMasterDir/coord1)
+coordMaxWALsernder=0	# max_wal_senders: needed to configure slave. If zero value is specified,
+						# it is expected to supply this parameter explicitly by external files
+						# specified in the following.	If you don't configure slaves, leave this value to zero
+.
+coordMaxWALSenders=($coordMaxWALsernder)
+						# max_wal_senders configuration for each coordinator.
+
+#---- Slave -------------
+coordSlave=n			# Specify y if you configure at least one coordiantor slave.  Otherwise, the following
+						# configuration parameters will be set to empty values.
+						# If no effective server names are found (that is, every servers are specified as none)
+,
+						# then coordSlave value will be set to n and all the following values will be set to
+						# empty values.
+coordSlaveSync=y		# Specify to connect with synchronized mode.
+coordSlaveServers=(node07 node08 node09 node06)			# none means this slave is not available
+coordSlavePorts=(20004 20005 20004 20005)			# Master ports
+coordSlavePoolerPorts=(20010 20011 20010 20011)			# Master pooler ports
+coordSlaveDirs=($coordSlaveDir $coordSlaveDir $coordSlaveDir $coordSlaveDir)
+coordArchLogDirs=($coordArchLogDir $coordArchLogDir $coordArchLogDir $coordArchLogDir)
+
+#---- Configuration files---
+# Need these when you'd like setup specific non-default configuration 
+# These files will go to corresponding files for the master.
+# You may supply your bash script to setup extra config lines and extra pg_hba.conf entries 
+# Or you may supply these files manually.
+coordExtraConfig=coordExtraConfig	# Extra configuration file for coordinators.  
+						# This file will be added to all the coordinators'
+						# postgresql.conf
+# Pleae note that the following sets up minimum parameters which you may want to change.
+# You can put your postgresql.conf lines here.
+cat > $coordExtraConfig <<EOF
+#================================================
+# Added to all the coordinator postgresql.conf
+# Original: $coordExtraConfig
+log_destination = 'stderr'
+logging_collector = on
+log_directory = 'pg_log'
+listen_addresses = '*'
+max_connections = 100
+EOF
+
+# Additional Configuration file for specific coordinator master.
+# You can define each setting by similar means as above.
+coordSpecificExtraConfig=(none none none none)
+coordExtraPgHba=none	# Extra entry for pg_hba.conf.  This file will be added to all the coordinators' pg_hba.conf
+coordSpecificExtraPgHba=(none none none none)
+
+#----- Additional Slaves -----
+#
+# Please note that this section is just a suggestion how we extend the configuration for
+# multiple and cascaded replication.   They're not used in the current version.
+#
+coordAdditionalSlaves=n		# Additional slave can be specified as follows: where you
+coordAdditionalSlaveSet=(cad1)		# Each specifies set of slaves.   This case, two set of slaves are
+											# configured
+cad1_Sync=n		  		# All the slaves at "cad1" are connected with asynchronous mode.
+							# If not, specify "y"
+							# The following lines specifies detailed configuration for each
+							# slave tag, cad1.  You can define cad2 similarly.
+cad1_Servers=(node08 node09 node06 node07)	# Hosts
+cad1_dir=$HOME/pgxc/nodes/coord_slave_cad1
+cad1_Dirs=($cad1_dir $cad1_dir $cad1_dir $cad1_dir)
+cad1_ArchLogDir=$HOME/pgxc/nodes/coord_archlog_cad1
+cad1_ArchLogDirs=($cad1_ArchLogDir $cad1_ArchLogDir $cad1_ArchLogDir $cad1_ArchLogDir)
+
+
+#---- Datanodes -------------------------------------------------------------------------------------------------------
+
+#---- Shortcuts --------------
+datanodeMasterDir=/usr/local/pgxl-9.5/data/dn_master
+datanodeSlaveDir=/usr/local/pgxl-9.5/data/dn_slave
+datanodeArchLogDir=$HOME/pgxc/nodes/datanode_archlog
+
+#---- Overall ---------------
+#primaryDatanode=datanode1				# Primary Node.
+# At present, xc has a priblem to issue ALTER NODE against the primay node.  Until it is fixed, the test will be done
+# without this feature.
+primaryDatanode=datanode1				# Primary Node.
+datanodeNames=(datanode1 datanode2)
+datanodePorts=(15432 15433)	# Master ports
+datanodePoolerPorts=(6669 6670)	# Master pooler ports
+datanodePgHbaEntries=(10.0.0.0/24)	# Assumes that all the coordinator (master/slave) accepts
+										# the same connection
+										# This list sets up pg_hba.conf for $pgxcOwner user.
+										# If you'd like to setup other entries, supply them
+										# through extra configuration files specified below.
+# Note: The above parameter is extracted as "host all all 0.0.0.0/0 trust".   If you don't want
+# such setups, specify the value () to this variable and suplly what you want using datanodeExtraPgHba
+# and/or datanodeSpecificExtraPgHba variables.
+#datanodePgHbaEntries=(::1/128)	# Same as above but for IPv6 addresses
+
+#---- Master ----------------
+datanodeMasterServers=(sdw02 sdw03)	# none means this master is not available.
+													# This means that there should 
+be the master but is down.
+													# The cluster is not operationa
+l until the master is
+													# recovered and ready to run.	
+datanodeMasterDirs=($datanodeMasterDir/datanode1 $datanodeMasterDir/datanode2)
+datanodeMaxWalSender=0								# max_wal_senders: needed to configure slave. If zero v
+alue is 
+													# specified, it is expected thi
+s parameter is explicitly supplied
+													# by external configuration fil
+es.
+													# If you don't configure slaves
+, leave this value zero.
+datanodeMaxWALSenders=($datanodeMaxWalSender $datanodeMaxWalSender)
+						# max_wal_senders configuration for each datanode
+
+#---- Slave -----------------
+datanodeSlave=n		# Specify y if you configure at least one coordiantor slave.  Otherwise, the following
+						# configuration parameters will be set to empty values.
+						# If no effective server names are found (that is, every servers are specified as none)
+,
+						# then datanodeSlave value will be set to n and all the following values will be set to
+						# empty values.
+datanodeSlaveServers=(node07 node08 node09 node06)	# value none means this slave is not available
+datanodeSlavePorts=(20008 20009 20008 20009)	# value none means this slave is not available
+datanodeSlavePoolerPorts=(20012 20013 20012 20013)	# value none means this slave is not available
+datanodeSlaveSync=y		# If datanode slave is connected in synchronized mode
+datanodeSlaveDirs=($datanodeSlaveDir $datanodeSlaveDir $datanodeSlaveDir $datanodeSlaveDir)
+datanodeArchLogDirs=( $datanodeArchLogDir $datanodeArchLogDir $datanodeArchLogDir $datanodeArchLogDir )
+
+# ---- Configuration files ---
+# You may supply your bash script to setup extra config lines and extra pg_hba.conf entries here.
+# These files will go to corresponding files for the master.
+# Or you may supply these files manually.
+datanodeExtraConfig=none	# Extra configuration file for datanodes.  This file will be added to all the 
+							# datanodes' postgresql.conf
+datanodeSpecificExtraConfig=(none none none none)
+datanodeExtraPgHba=none		# Extra entry for pg_hba.conf.  This file will be added to all the datanodes' postgresql.conf
+datanodeSpecificExtraPgHba=(none none none none)
+
+#----- Additional Slaves -----
+datanodeAdditionalSlaves=n	# Additional slave can be specified as follows: where you
+# datanodeAdditionalSlaveSet=(dad1 dad2)		# Each specifies set of slaves.   This case, two set of slaves are
+											# configured
+# dad1_Sync=n		  		# All the slaves at "cad1" are connected with asynchronous mode.
+							# If not, specify "y"
+							# The following lines specifies detailed configuration for each
+							# slave tag, cad1.  You can define cad2 similarly.
+# dad1_Servers=(node08 node09 node06 node07)	# Hosts
+# dad1_dir=$HOME/pgxc/nodes/coord_slave_cad1
+# dad1_Dirs=($cad1_dir $cad1_dir $cad1_dir $cad1_dir)
+# dad1_ArchLogDir=$HOME/pgxc/nodes/coord_archlog_cad1
+# dad1_ArchLogDirs=($cad1_ArchLogDir $cad1_ArchLogDir $cad1_ArchLogDir $cad1_ArchLogDir)
+
+#---- WAL archives -------------------------------------------------------------------------------------------------
+walArchive=n	# If you'd like to configure WAL archive, edit this section.
+				# Pgxc_ctl assumes that if you configure WAL archive, you configure it
+				# for all the coordinators and datanodes.
+				# Default is "no".   Please specify "y" here to turn it on.
+#
+#		End of Configuration Section
+#
+#==========================================================================================================================
+
+#========================================================================================================================
+# The following is for extension.  Just demonstrate how to write such extension.  There's no code
+# which takes care of them so please ignore the following lines.  They are simply ignored by pgxc_ctl.
+# No side effects.
+#=============<< Beginning of future extension demonistration >> ========================================================
+# You can setup more than one backup set for various purposes, such as disaster recovery.
+walArchiveSet=(war1 war2)
+war1_source=(master)	# you can specify master, slave or ano other additional slaves as a source of WAL archive.
+					# Default is the master
+wal1_source=(slave)
+wal1_source=(additiona_coordinator_slave_set additional_datanode_slave_set)
+war1_host=node10	# All the nodes are backed up at the same host for a given archive set
+war1_backupdir=$HOME/pgxc/backup_war1
+wal2_source=(master)
+war2_host=node11
+war2_backupdir=$HOME/pgxc/backup_war2
+#=============<< End of future extension demonistration >> ========================================================
+[pgxl@mdw pgxc_ctl]$  
+
+
+
+
+
+
+
+
+
+
+
+[pgxl@mdw ~]$ pgxc_ctl init all
+/bin/bash
+Installing pgxc_ctl_bash script as /home/pgxl/pgxc_ctl/pgxc_ctl_bash.
+Installing pgxc_ctl_bash script as /home/pgxl/pgxc_ctl/pgxc_ctl_bash.
+Reading configuration using /home/pgxl/pgxc_ctl/pgxc_ctl_bash --home /home/pgxl/pgxc_ctl --configuration /home/pgxl/pgxc_ctl/pgxc_ctl.conf
+Finished reading configuration.
+   ******** PGXC_CTL START ***************
+
+Current directory: /home/pgxl/pgxc_ctl
+Initialize GTM master
+The files belonging to this GTM system will be owned by user "pgxl".
+This user must also own the server process.
+
+
+fixing permissions on existing directory /usr/local/pgxl-9.5/data/gtm ... ok
+creating configuration files ... ok
+creating control file ... ok
+
+Success.
+waiting for server to shut down.... done
+server stopped
+Done.
+Start GTM master
+server starting
+Initialize all the coordinator masters.
+Initialize coordinator master coord1.
+The files belonging to this database system will be owned by user "pgxl".
+This user must also own the server process.
+
+The database cluster will be initialized with locale "en_US.UTF-8".
+The default database encoding has accordingly been set to "UTF8".
+The default text search configuration will be set to "english".
+
+Data page checksums are disabled.
+
+fixing permissions on existing directory /usr/local/pgxl-9.5/data/coord/coord1 ... ok
+creating subdirectories ... ok
+selecting default max_connections ... 100
+selecting default shared_buffers ... 128MB
+selecting dynamic shared memory implementation ... posix
+creating configuration files ... ok
+creating template1 database in /usr/local/pgxl-9.5/data/coord/coord1/base/1 ... ok
+initializing pg_authid ... ok
+initializing dependencies ... ok
+creating system views ... ok
+creating cluster information ... ok
+loading system objects' descriptions ... ok
+creating collations ... ok
+creating conversions ... ok
+creating dictionaries ... ok
+setting privileges on built-in objects ... ok
+creating information schema ... ok
+loading PL/pgSQL server-side language ... ok
+vacuuming database template1 ... ok
+copying template1 to template0 ... ok
+copying template1 to postgres ... ok
+syncing data to disk ... ok
+freezing database template0 ... ok
+freezing database template1 ... ok
+freezing database postgres ... ok
+
+WARNING: enabling "trust" authentication for local connections
+You can change this by editing pg_hba.conf or using the option -A, or
+--auth-local and --auth-host, the next time you run initdb.
+
+Success.
+Done.
+Starting coordinator master.
+Starting coordinator master coord1
+LOG:  redirecting log output to logging collector process
+HINT:  Future log output will appear in directory "pg_log".
+Done.
+Initialize all the datanode masters.
+Initialize the datanode master datanode1.
+Initialize the datanode master datanode2.
+The files belonging to this database system will be owned by user "pgxl".
+This user must also own the server process.
+
+The database cluster will be initialized with locale "en_US.UTF-8".
+The default database encoding has accordingly been set to "UTF8".
+The default text search configuration will be set to "english".
+
+Data page checksums are disabled.
+
+fixing permissions on existing directory /usr/local/pgxl-9.5/data/dn_master/datanode1 ... ok
+creating subdirectories ... ok
+selecting default max_connections ... 100
+selecting default shared_buffers ... 128MB
+selecting dynamic shared memory implementation ... posix
+creating configuration files ... ok
+creating template1 database in /usr/local/pgxl-9.5/data/dn_master/datanode1/base/1 ... ok
+initializing pg_authid ... ok
+initializing dependencies ... ok
+creating system views ... ok
+creating cluster information ... ok
+loading system objects' descriptions ... ok
+creating collations ... ok
+creating conversions ... ok
+creating dictionaries ... ok
+setting privileges on built-in objects ... ok
+creating information schema ... ok
+loading PL/pgSQL server-side language ... ok
+vacuuming database template1 ... ok
+copying template1 to template0 ... ok
+copying template1 to postgres ... ok
+syncing data to disk ... ok
+freezing database template0 ... ok
+freezing database template1 ... ok
+freezing database postgres ... ok
+
+WARNING: enabling "trust" authentication for local connections
+You can change this by editing pg_hba.conf or using the option -A, or
+--auth-local and --auth-host, the next time you run initdb.
+
+Success.
+The files belonging to this database system will be owned by user "pgxl".
+This user must also own the server process.
+
+The database cluster will be initialized with locale "en_US.UTF-8".
+The default database encoding has accordingly been set to "UTF8".
+The default text search configuration will be set to "english".
+
+Data page checksums are disabled.
+
+fixing permissions on existing directory /usr/local/pgxl-9.5/data/dn_master/datanode2 ... ok
+creating subdirectories ... ok
+selecting default max_connections ... 100
+selecting default shared_buffers ... 128MB
+selecting dynamic shared memory implementation ... posix
+creating configuration files ... ok
+creating template1 database in /usr/local/pgxl-9.5/data/dn_master/datanode2/base/1 ... ok
+initializing pg_authid ... ok
+initializing dependencies ... ok
+creating system views ... ok
+creating cluster information ... ok
+loading system objects' descriptions ... ok
+creating collations ... ok
+creating conversions ... ok
+creating dictionaries ... ok
+setting privileges on built-in objects ... ok
+creating information schema ... ok
+loading PL/pgSQL server-side language ... ok
+vacuuming database template1 ... ok
+copying template1 to template0 ... ok
+copying template1 to postgres ... ok
+syncing data to disk ... ok
+freezing database template0 ... ok
+freezing database template1 ... ok
+freezing database postgres ... ok
+
+WARNING: enabling "trust" authentication for local connections
+You can change this by editing pg_hba.conf or using the option -A, or
+--auth-local and --auth-host, the next time you run initdb.
+
+Success.
+Done.
+Starting all the datanode masters.
+Starting datanode master datanode1.
+Starting datanode master datanode2.
+LOG:  redirecting log output to logging collector process
+HINT:  Future log output will appear in directory "pg_log".
+LOG:  redirecting log output to logging collector process
+HINT:  Future log output will appear in directory "pg_log".
+Done.
+ALTER NODE coord1 WITH (HOST='sdw01', PORT=5432);
+ALTER NODE
+CREATE NODE datanode1 WITH (TYPE='datanode', HOST='sdw02', PORT=15432, PRIMARY);
+CREATE NODE
+CREATE NODE datanode2 WITH (TYPE='datanode', HOST='sdw03', PORT=15433);
+CREATE NODE
+SELECT pgxc_pool_reload();
+ pgxc_pool_reload 
+------------------
+ t
+(1 row)
+
+Done.
+EXECUTE DIRECT ON (datanode1) 'CREATE NODE coord1 WITH (TYPE=''coordinator'', HOST=''sdw01'', PORT=5432)';
+EXECUTE DIRECT
+EXECUTE DIRECT ON (datanode1) 'ALTER NODE datanode1 WITH (TYPE=''datanode'', HOST=''sdw02'', PORT=15432, PRIMARY)';
+EXECUTE DIRECT
+EXECUTE DIRECT ON (datanode1) 'CREATE NODE datanode2 WITH (TYPE=''datanode'', HOST=''sdw03'', PORT=15433)';
+EXECUTE DIRECT
+EXECUTE DIRECT ON (datanode1) 'SELECT pgxc_pool_reload()';
+ pgxc_pool_reload 
+------------------
+ t
+(1 row)
+
+EXECUTE DIRECT ON (datanode2) 'CREATE NODE coord1 WITH (TYPE=''coordinator'', HOST=''sdw01'', PORT=5432)';
+EXECUTE DIRECT
+EXECUTE DIRECT ON (datanode2) 'CREATE NODE datanode1 WITH (TYPE=''datanode'', HOST=''sdw02'', PORT=15432, PRIMARY)';
+EXECUTE DIRECT
+EXECUTE DIRECT ON (datanode2) 'ALTER NODE datanode2 WITH (TYPE=''datanode'', HOST=''sdw03'', PORT=15433)';
+EXECUTE DIRECT
+EXECUTE DIRECT ON (datanode2) 'SELECT pgxc_pool_reload()';
+ pgxc_pool_reload 
+------------------
+ t
+(1 row)
+
+Done.
+
+
+查看Pgxl集群状态
+[pgxl@mdw ~]$ pgxc_ctl monitor all
+/bin/bash
+Installing pgxc_ctl_bash script as /home/pgxl/pgxc_ctl/pgxc_ctl_bash.
+Installing pgxc_ctl_bash script as /home/pgxl/pgxc_ctl/pgxc_ctl_bash.
+Reading configuration using /home/pgxl/pgxc_ctl/pgxc_ctl_bash --home /home/pgxl/pgxc_ctl --configuration /home/pgxl/pgxc_ctl/pgxc_ctl.conf
+Finished reading configuration.
+   ******** PGXC_CTL START ***************
+
+Current directory: /home/pgxl/pgxc_ctl
+Running: gtm master
+Running: coordinator master coord1
+Running: datanode master datanode1
+Running: datanode master datanode2
+[pgxl@mdw ~]$ 
+
+
+
+停止Pgxl集群
+
+[pgxl@mdw ~]$ pgxc_ctl stop all
+/bin/bash
+Installing pgxc_ctl_bash script as /home/pgxl/pgxc_ctl/pgxc_ctl_bash.
+Installing pgxc_ctl_bash script as /home/pgxl/pgxc_ctl/pgxc_ctl_bash.
+Reading configuration using /home/pgxl/pgxc_ctl/pgxc_ctl_bash --home /home/pgxl/pgxc_ctl --configuration /home/pgxl/pgxc_ctl/pgxc_ctl.conf
+Finished reading configuration.
+   ******** PGXC_CTL START ***************
+
+Current directory: /home/pgxl/pgxc_ctl
+Stopping all the coordinator masters.
+Stopping coordinator master coord1.
+Done.
+Stopping all the datanode masters.
+Stopping datanode master datanode1.
+Stopping datanode master datanode2.
+Done.
+Stop GTM master
+waiting for server to shut down.... done
+server stopped
+[pgxl@mdw ~]$ 
+
+
+
+
+启用pgxl集群：
+
+
+[pgxl@mdw ~]$ pgxc_ctl start all
+/bin/bash
+Installing pgxc_ctl_bash script as /home/pgxl/pgxc_ctl/pgxc_ctl_bash.
+Installing pgxc_ctl_bash script as /home/pgxl/pgxc_ctl/pgxc_ctl_bash.
+Reading configuration using /home/pgxl/pgxc_ctl/pgxc_ctl_bash --home /home/pgxl/pgxc_ctl --configuration /home/pgxl/pgxc_ctl/pgxc_ctl.conf
+Finished reading configuration.
+   ******** PGXC_CTL START ***************
+
+Current directory: /home/pgxl/pgxc_ctl
+Start GTM master
+server starting
+Starting coordinator master.
+Starting coordinator master coord1
+LOG:  redirecting log output to logging collector process
+HINT:  Future log output will appear in directory "pg_log".
+Done.
+Starting all the datanode masters.
+Starting datanode master datanode1.
+Starting datanode master datanode2.
+LOG:  redirecting log output to logging collector process
+HINT:  Future log output will appear in directory "pg_log".
+LOG:  redirecting log output to logging collector process
+HINT:  Future log output will appear in directory "pg_log".
+Done.
+[pgxl@mdw ~]$ 
+
+
+
+
+
+
+
+也可以在gtm节点新建数据库
+
+#pgxc_ctl
+
+#then input command,
+Createdb test
+
+
+
+在coordinator 节点测试：
+
+
+root@sdw01 ~]# netstat -tnl
+Active Internet connections (only servers)
+Proto Recv-Q Send-Q Local Address           Foreign Address         State      
+tcp        0      0 0.0.0.0:22              0.0.0.0:*               LISTEN     
+tcp        0      0 0.0.0.0:5432            0.0.0.0:*               LISTEN     
+tcp        0      0 127.0.0.1:25            0.0.0.0:*               LISTEN     
+tcp6       0      0 :::22                   :::*                    LISTEN     
+tcp6       0      0 :::5432                 :::*                    LISTEN     
+tcp6       0      0 ::1:25                  :::*                    LISTEN     
+[root@sdw01 ~]# su - postgres
+su: user postgres does not exist
+[root@sdw01 ~]# su - pgxl
+Last login: Wed May 31 02:31:05 EDT 2017 from mdw on pts/0
+[pgxl@sdw01 ~]$ psql 
+psql: FATAL:  database "pgxl" does not exist
+[pgxl@sdw01 ~]$ psql postgres
+psql (PGXL 9.5r1.5, based on PG 9.5.6 (Postgres-XL 9.5r1.5))
+Type "help" for help.
+
+postgres=# CREATE DATABASE testdb;
+CREATE DATABASE
+postgres=# \q
+[pgxl@sdw01 ~]$ psql testdb
+psql (PGXL 9.5r1.5, based on PG 9.5.6 (Postgres-XL 9.5r1.5))
+Type "help" for help.
+
+testdb=# SELECT * FROM pgxc_node;
+ node_name | node_type | node_port | node_host | nodeis_primary | nodeis_preferred |  node_id   
+-----------+-----------+-----------+-----------+----------------+------------------+------------
+ coord1    | C         |      5432 | sdw01     | f              | f                | 1885696643
+ datanode1 | D         |     15432 | sdw02     | t              | f                |  888802358
+ datanode2 | D         |     15433 | sdw03     | f              | f                | -905831925
+(3 rows)
+
+testdb=# CREATE TABLE disttab(col1 int, col2 int, col3 text) DISTRIBUTE BY HASH(col1);
+CREATE TABLE
+testdb=# \d+ disttab
+                        Table "public.disttab"
+ Column |  Type   | Modifiers | Storage  | Stats target | Description 
+--------+---------+-----------+----------+--------------+-------------
+ col1   | integer |           | plain    |              | 
+ col2   | integer |           | plain    |              | 
+ col3   | text    |           | extended |              | 
+Distribute By: HASH(col1)
+Location Nodes: ALL DATANODES
+
+testdb=# CREATE TABLE repltab (col1 int, col2 int) DISTRIBUTE BY
+testdb-# REPLICATION;
+CREATE TABLE
+testdb=# INSERT INTO disttab SELECT generate_series(1,100), generate_series(101, 200), 'foo';
+INSERT 0 100
+testdb=#  INSERT INTO repltab SELECT generate_series(1,100), generate_series(101, 200);
+INSERT 0 100
+testdb=# SELECT count(*) FROM disttab;
+ count 
+-------
+   100
+(1 row)
+
+testdb=# SELECT xc_node_id, count(*) FROM disttab GROUP BY xc_node_id;
+ xc_node_id | count 
+------------+-------
+  888802358 |    42
+ -905831925 |    58
+(2 rows)
+
+testdb=# SELECT count(*) FROM repltab;
+ count 
+-------
+   100
+(1 row)
+
+testdb=# SELECT xc_node_id, count(*) FROM repltab GROUP BY xc_node_id;
+ xc_node_id | count 
+------------+-------
+  888802358 |   100
+(1 row)
+
+testdb=# \q
+
+
+
+
+
+
+
+
+
+

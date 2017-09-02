@@ -1,0 +1,116 @@
+This problem has been resolved by modifying contrib / pgxc_ctl / coord_cmd.c and contrib/pgxc_ctl / datanode_cmd.c to modify the old ¡°-x¡± to " -X fetch", recompile. OK
+
+
+
+     [root@mdw master]# vi contrib/pgxc_ctl/coord_cmd.c 
+  
+
+    305         appendCmdEl(cmdBuildDir, (cmdBaseBkup = initCmd(aval(VAR_coordSlaveServers)[idx])));
+    306         snprintf(newCommand(cmdBaseBkup), MAXLINE,
+    307                          "pg_basebackup -p %s -h %s -D %s -X fetch",
+    308                          aval(VAR_coordPorts)[idx], aval(VAR_coordMasterServers)[idx], aval(VAR_coordSlaveDirs)[idx]);
+    309 
+    310         /* Configure recovery.conf file at the slave */
+    311         appendCmdEl(cmdBuildDir, (cmdRecoveryConf = initCmd(aval(VAR_coordSlaveServers)[idx])));
+    312         if ((f = prepareLocalStdin(localStdin, MAXPATH, NULL)) == NULL)
+
+
+   1417         doImmediate(host, NULL, "pg_basebackup -p %s -h %s -D %s -X fetch",
+   1418                                 aval(VAR_coordPorts)[idx], aval(VAR_coordMasterServers)[idx], dir);
+   1419         /* Update the slave configuration with hot standby and port */
+   1420         if ((f = pgxc_popen_w(host, "cat >> %s/postgresql.conf", dir)) == NULL)
+   1421         {
+ 
+   [root@mdw master]# vi contrib/pgxc_ctl/datanode_cmd.c 
+    
+
+    327         /* Obtain base backup of the master */
+    328         appendCmdEl(cmdBuildDir, (cmdBaseBkup = initCmd(aval(VAR_datanodeSlaveServers)[idx])));
+    329         snprintf(newCommand(cmdBaseBkup), MAXLINE,
+    330                          "pg_basebackup -p %s -h %s -D %s  -X fetch",
+    331                          aval(VAR_datanodePorts)[idx], aval(VAR_datanodeMasterServers)[idx],
+    332                          aval(VAR_datanodeSlaveDirs)[idx]);
+
+
+
+   1486         /* pg_basebackup */
+   1487         doImmediate(host, NULL, "pg_basebackup -p %s -h %s -D %s -X fetch %s %s",
+   1488                                 aval(VAR_datanodePorts)[idx],
+   1489                                 aval(VAR_datanodeMasterServers)[idx], dir,
+   1490                                 wal ? "--xlogdir" : "",
+   1491                                 wal ? walDir : "");
+   1492         /* Update the slave configuration with hot standby and port */
+   1493         if ((f = pgxc_popen_w(host, "cat >> %s/postgresql.conf", dir)) == NULL)
+
+
+
+
+-----------------Test Case-------------------------------
+
+
+[postgres@mdw ~]$ pgxc_ctl 
+/bin/bash
+Installing pgxc_ctl_bash script as /home/postgres/pgxc_ctl/pgxc_ctl_bash.
+Installing pgxc_ctl_bash script as /home/postgres/pgxc_ctl/pgxc_ctl_bash.
+Reading configuration using /home/postgres/pgxc_ctl/pgxc_ctl_bash --home /home/postgres/pgxc_ctl --configuration /home/postgres/pgxc_ctl/pgxc_ctl.conf
+Finished reading configuration.
+   ******** PGXC_CTL START ***************
+
+Current directory: /home/postgres/pgxc_ctl
+PGXC monitor all
+Running: gtm master
+Running: coordinator master coord1
+Running: datanode master dn1
+Running: datanode master dn2
+Running: datanode master dn3
+PGXC  add datanode slave dn1 mdw 6432 40001 /usr/local/pgxl-10/data/dn_slave.1 none /usr/local/pgxl-10/data/datanode_archlog.1  
+Actual Command: ssh postgres@mdw "( mkdir -p /usr/local/pgxl-10/data/dn_slave.1;chmod 0700 /usr/local/pgxl-10/data/dn_slave.1 ) > /tmp/mdw_STDOUT_15663_0 2>&1" < /dev/null > /dev/null 2>&1
+Bring remote stdout: scp postgres@mdw:/tmp/mdw_STDOUT_15663_0 /tmp/STDOUT_15663_1 > /dev/null 2>&1
+Actual Command: ssh postgres@mdw "( rm -rf /usr/local/pgxl-10/data/datanode_archlog.1; mkdir -p /usr/local/pgxl-10/data/datanode_archlog.1;chmod 0700 /usr/local/pgxl-10/data/datanode_archlog.1 ) > /tmp/mdw_STDOUT_15663_2 2>&1" < /dev/null > /dev/null 2>&1
+Bring remote stdout: scp postgres@mdw:/tmp/mdw_STDOUT_15663_2 /tmp/STDOUT_15663_3 > /dev/null 2>&1
+Actual Command: ssh postgres@mdw "( rm -rf none; mkdir -p none;chmod 0700 none ) > /tmp/mdw_STDOUT_15663_4 2>&1" < /dev/null > /dev/null 2>&1
+Bring remote stdout: scp postgres@mdw:/tmp/mdw_STDOUT_15663_4 /tmp/STDOUT_15663_5 > /dev/null 2>&1
+Actual Command: ssh postgres@sdw02 "( pg_ctl stop -w -Z datanode -D /usr/local/pgxl-10/data/dn_master -m fast ) > /tmp/mdw_STDOUT_15663_6 2>&1" < /dev/null > /dev/null 2>&1
+Bring remote stdout: scp postgres@sdw02:/tmp/mdw_STDOUT_15663_6 /tmp/STDOUT_15663_7 > /dev/null 2>&1
+Actual Command: ssh postgres@sdw02 "( pg_ctl start -w -Z datanode -D /usr/local/pgxl-10/data/dn_master ) > /tmp/mdw_STDOUT_15663_8 2>&1" < /dev/null > /dev/null 2>&1
+Bring remote stdout: scp postgres@sdw02:/tmp/mdw_STDOUT_15663_8 /tmp/STDOUT_15663_9 > /dev/null 2>&1
+2017-07-13 23:07:39.425 EDT [7768] LOG:  listening on IPv4 address "0.0.0.0", port 5434
+2017-07-13 23:07:39.425 EDT [7768] LOG:  listening on IPv6 address "::", port 5434
+2017-07-13 23:07:39.583 EDT [7768] LOG:  listening on Unix socket "/tmp/.s.PGSQL.5434"
+2017-07-13 23:07:39.797 EDT [7768] LOG:  redirecting log output to logging collector process
+2017-07-13 23:07:39.797 EDT [7768] HINT:  Future log output will appear in directory "pg_log".
+Actual Command: ssh postgres@mdw "( pg_basebackup -p 5434 -h sdw02 -D /usr/local/pgxl-10/data/dn_slave.1 -X fetch   ) > /tmp/mdw_STDOUT_15663_10 2>&1" < /dev/null > /dev/null 2>&1
+Bring remote stdout: scp postgres@mdw:/tmp/mdw_STDOUT_15663_10 /tmp/STDOUT_15663_11 > /dev/null 2>&1
+Actual Command: ssh postgres@mdw "( pg_ctl start -w -Z datanode -D /usr/local/pgxl-10/data/dn_slave.1 ) > /tmp/mdw_STDOUT_15663_12 2>&1" < /dev/null > /dev/null 2>&1
+Bring remote stdout: scp postgres@mdw:/tmp/mdw_STDOUT_15663_12 /tmp/STDOUT_15663_13 > /dev/null 2>&1
+2017-07-13 23:10:02.733 EDT [16026] LOG:  listening on IPv4 address "0.0.0.0", port 6432
+2017-07-13 23:10:02.733 EDT [16026] LOG:  listening on IPv6 address "::", port 6432
+2017-07-13 23:10:02.742 EDT [16026] LOG:  listening on Unix socket "/tmp/.s.PGSQL.6432"
+2017-07-13 23:10:02.773 EDT [16026] LOG:  redirecting log output to logging collector process
+2017-07-13 23:10:02.773 EDT [16026] HINT:  Future log output will appear in directory "pg_log".
+PGXC monitor all
+Running: gtm master
+Running: coordinator master coord1
+Running: datanode master dn1
+Running: datanode slave dn1
+Running: datanode master dn2
+Running: datanode master dn3
+PGXC monitor all
+Running: gtm master
+Running: coordinator master coord1
+Running: datanode master dn1
+Running: datanode slave dn1
+Running: datanode master dn2
+Running: datanode master dn3
+PGXC \q
+sh: q: command not found
+PGXC quit
+[postgres@mdw ~]$ psql -h sdw01 test
+psql (PGXL 10alpha1, based on PG 10beta1 (Postgres-XL 10alpha1))
+Type "help" for help.
+
+test=# EXECUTE DIRECT ON(dn1) 'SELECT client_hostname, state, sync_state FROM pg_stat_replication'; 
+ client_hostname |   state   | sync_state 
+-----------------+-----------+------------
+                 | streaming | sync
+(1 row)

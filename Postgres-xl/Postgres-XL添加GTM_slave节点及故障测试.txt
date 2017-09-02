@@ -1,0 +1,295 @@
+Postgres-XL添加GTM_slave
+
+
+先添加gtm_proxy节点
+
+
+PGXC add gtm_proxy gtm_pxy1 sdw01 7777 /usr/local/pgxl-9.5/data/gtm_pxy.1
+Initializing gtm proxy gtm_pxy1.
+The files belonging to this GTM system will be owned by user "pgxl".
+This user must also own the server process.
+
+
+fixing permissions on existing directory /usr/local/pgxl-9.5/data/gtm_pxy.1 ... ok
+creating configuration files ... ok
+
+Success.
+Done.
+Starting gtm proxy gtm_pxy1.
+server starting
+Done.
+PGXC monitor all
+Running: gtm master
+Running: gtm proxy gtm_pxy1
+Running: coordinator master coord1
+Running: coordinator master coord2
+Running: datanode master dn1
+Running: datanode master dn2
+
+
+停止集群
+
+[pgxl@mdw pgxc_log]$ pgxc_ctl stop all
+/bin/bash
+Installing pgxc_ctl_bash script as /home/pgxl/pgxc_ctl/pgxc_ctl_bash.
+Installing pgxc_ctl_bash script as /home/pgxl/pgxc_ctl/pgxc_ctl_bash.
+Reading configuration using /home/pgxl/pgxc_ctl/pgxc_ctl_bash --home /home/pgxl/pgxc_ctl --configuration /home/pgxl/pgxc_ctl/pgxc_ctl.conf
+Finished reading configuration.
+   ******** PGXC_CTL START ***************
+
+Current directory: /home/pgxl/pgxc_ctl
+Stopping all the coordinator masters.
+Stopping coordinator master coord1.
+Stopping coordinator master coord2.
+Done.
+Stopping all the datanode masters.
+Stopping datanode master dn1.
+Stopping datanode master dn2.
+Done.
+Stopping all the gtm proxies.
+Stopping gtm proxy gtm_pxy1.
+waiting for server to shut down.... done
+server stopped
+Done.
+Stop GTM master
+waiting for server to shut down.... done
+server stopped
+
+
+
+
+只启动gtm 节点 然后新建一个gtm_slave节点
+[pgxl@mdw pgxc_log]$ pgxc_ctl 
+/bin/bash
+Installing pgxc_ctl_bash script as /home/pgxl/pgxc_ctl/pgxc_ctl_bash.
+Installing pgxc_ctl_bash script as /home/pgxl/pgxc_ctl/pgxc_ctl_bash.
+Reading configuration using /home/pgxl/pgxc_ctl/pgxc_ctl_bash --home /home/pgxl/pgxc_ctl --configuration /home/pgxl/pgxc_ctl/pgxc_ctl.conf
+Finished reading configuration.
+   ******** PGXC_CTL START ***************
+
+Current directory: /home/pgxl/pgxc_ctl
+PGXC start gtm
+Start GTM master
+server starting
+PGXC add gtm slave gtm_s1ave sdw03 6669  /usr/local/pgxl-9.5/data/gtm_slave.1
+Initialize GTM slave
+The files belonging to this GTM system will be owned by user "pgxl".
+This user must also own the server process.
+
+
+fixing permissions on existing directory /usr/local/pgxl-9.5/data/gtm_slave.1 ... ok
+creating configuration files ... ok
+creating control file ... ok
+
+Success.
+Done.
+Start GTM slaveserver starting
+Done.
+PGXC \q
+sh: q: command not found
+PGXC quit
+[pgxl@mdw pgxc_log]$ pgxc_ctl 
+/bin/bash
+Installing pgxc_ctl_bash script as /home/pgxl/pgxc_ctl/pgxc_ctl_bash.
+Installing pgxc_ctl_bash script as /home/pgxl/pgxc_ctl/pgxc_ctl_bash.
+Reading configuration using /home/pgxl/pgxc_ctl/pgxc_ctl_bash --home /home/pgxl/pgxc_ctl --configuration /home/pgxl/pgxc_ctl/pgxc_ctl.conf
+Finished reading configuration.
+   ******** PGXC_CTL START ***************
+
+Current directory: /home/pgxl/pgxc_ctl
+PGXC monitor all
+Running: gtm master
+Running: gtm slave
+Not running: gtm proxy gtm_pxy1
+Not running: coordinator master coord1
+Not running: coordinator master coord2
+Not running: datanode master dn1
+Not running: datanode master dn2
+PGXC 
+PGXC q\
+sh: line 2: q: command not found
+PGXC \q
+sh: q: command not found
+PGXC quit
+[pgxl@mdw pgxc_log]$ pgxc_ctl stop all
+/bin/bash
+Installing pgxc_ctl_bash script as /home/pgxl/pgxc_ctl/pgxc_ctl_bash.
+Installing pgxc_ctl_bash script as /home/pgxl/pgxc_ctl/pgxc_ctl_bash.
+Reading configuration using /home/pgxl/pgxc_ctl/pgxc_ctl_bash --home /home/pgxl/pgxc_ctl --configuration /home/pgxl/pgxc_ctl/pgxc_ctl.conf
+Finished reading configuration.
+   ******** PGXC_CTL START ***************
+
+Current directory: /home/pgxl/pgxc_ctl
+Stopping all the coordinator masters.
+Stopping coordinator master coord1.
+Stopping coordinator master coord2.
+pg_ctl: PID file "/usr/local/pgxl-9.5/data/coord_master.1/postmaster.pid" does not exist
+Is server running?
+pg_ctl: PID file "/usr/local/pgxl-9.5/data/coord_master.2/postmaster.pid" does not exist
+Is server running?
+Done.
+Stopping all the datanode masters.
+Stopping datanode master dn1.
+Stopping datanode master dn2.
+pg_ctl: PID file "/usr/local/pgxl-9.5/data/dn_slave.1/postmaster.pid" does not exist
+Is server running?
+pg_ctl: PID file "/usr/local/pgxl-9.5/data/dn_master2/postmaster.pid" does not exist
+Is server running?
+Done.
+Stopping all the gtm proxies.
+Stopping gtm proxy gtm_pxy1.
+gtm_ctl: PID file "/usr/local/pgxl-9.5/data/gtm_pxy.1/gtm_proxy.pid" does not exist
+Is server running?
+Done.
+Stop GTM slave
+waiting for server to shut down.... done
+server stopped
+Stop GTM master
+waiting for server to shut down.... done
+server stopped
+[pgxl@mdw pgxc_log]$ pgxc_ctl start all
+/bin/bash
+Installing pgxc_ctl_bash script as /home/pgxl/pgxc_ctl/pgxc_ctl_bash.
+Installing pgxc_ctl_bash script as /home/pgxl/pgxc_ctl/pgxc_ctl_bash.
+Reading configuration using /home/pgxl/pgxc_ctl/pgxc_ctl_bash --home /home/pgxl/pgxc_ctl --configuration /home/pgxl/pgxc_ctl/pgxc_ctl.conf
+Finished reading configuration.
+   ******** PGXC_CTL START ***************
+
+Current directory: /home/pgxl/pgxc_ctl
+Start GTM master
+server starting
+Start GTM slaveserver starting
+Done.
+Starting all the gtm proxies.
+Starting gtm proxy gtm_pxy1.
+server starting
+Done.
+Starting coordinator master.
+Starting coordinator master coord1
+Starting coordinator master coord2
+LOG:  redirecting log output to logging collector process
+HINT:  Future log output will appear in directory "pg_log".
+LOG:  redirecting log output to logging collector process
+HINT:  Future log output will appear in directory "pg_log".
+Done.
+Starting all the datanode masters.
+Starting datanode master dn1.
+Starting datanode master dn2.
+LOG:  redirecting log output to logging collector process
+HINT:  Future log output will appear in directory "pg_log".
+LOG:  redirecting log output to logging collector process
+HINT:  Future log output will appear in directory "pg_log".
+Done.
+[pgxl@mdw pgxc_log]$ 
+
+
+
+查看pgxc集群状态
+
+[pgxl@mdw pgxc_log]$ pgxc_ctl monitor all
+/bin/bash
+Installing pgxc_ctl_bash script as /home/pgxl/pgxc_ctl/pgxc_ctl_bash.
+Installing pgxc_ctl_bash script as /home/pgxl/pgxc_ctl/pgxc_ctl_bash.
+Reading configuration using /home/pgxl/pgxc_ctl/pgxc_ctl_bash --home /home/pgxl/pgxc_ctl --configuration /home/pgxl/pgxc_ctl/pgxc_ctl.conf
+Finished reading configuration.
+   ******** PGXC_CTL START ***************
+
+Current directory: /home/pgxl/pgxc_ctl
+Running: gtm master
+Running: gtm slave
+Running: gtm proxy gtm_pxy1
+Running: coordinator master coord1
+Running: coordinator master coord2
+Running: datanode master dn1
+Running: datanode master dn2
+[pgxl@mdw pgxc_log]$
+
+
+
+注意：只存在gtm_proxy节点才能实现gtm故障转移条件 并且以上所有coord及datanode节点连接到gtm_proxy 可以分别使用多个不同的gtm_proxy， 另外gtm_proxy是不保存数据，gtm_proxy故障可可以通过重启恢复。
+
+如下：
+
+
+Current directory: /home/pgxl/pgxc_ctl
+PGXC monitor all
+Running: gtm master
+Running: gtm slave
+Running: gtm proxy gtm_pxy1
+Running: gtm proxy gtm_pxy2
+Running: coordinator master coord1
+Running: coordinator master coord2
+Running: datanode master dn1
+Running: datanode master dn2
+Running: datanode master dn3
+PGXC 
+
+
+
+
+******** PGXC_CTL START ***************
+
+Current directory: /home/pgxl/pgxc_ctl
+PGXC  kill GTM master
+Kill GTM master
+
+PGXC failover gtm
+Failover gtm
+Running "gtm_ctl promote -Z gtm -D /usr/local/pgxl-9.5/data/gtm_slave.1"
+Actual Command: ssh pgxl@sdw03 "( gtm_ctl promote -Z gtm -D /usr/local/pgxl-9.5/data/gtm_slave.1 ) > /tmp/mdw_STDOUT_11939_0 2>&1" < /dev/null > /dev/null 2>&1
+Bring remote stdout: scp pgxl@sdw03:/tmp/mdw_STDOUT_11939_0 /tmp/STDOUT_11939_1 > /dev/null 2>&1
+Updating gtm.conf at sdw03:/usr/local/pgxl-9.5/data/gtm_slave.1
+Actual Command: ssh pgxl@sdw03 "( cat >> /usr/local/pgxl-9.5/data/gtm_slave.1/gtm.conf ) > /tmp/mdw_STDOUT_11939_3 2>&1" < /tmp/STDIN_11939_2 > /dev/null 2>&1
+Bring remote stdout: scp pgxl@sdw03:/tmp/mdw_STDOUT_11939_3 /tmp/STDOUT_11939_4 > /dev/null 2>&1
+
+PGXC reconnect gtm_proxy all
+
+Reconnecting all the gtm proxies to the new one.
+Reconnecting gtm proxy gtm_pxy1.
+Reconnecting gtm proxy gtm_pxy2.
+Done.
+PGXC 
+
+
+PGXC monitor all
+Running: gtm master
+Running: gtm proxy gtm_pxy1
+Running: gtm proxy gtm_pxy2
+Running: coordinator master coord1
+Running: coordinator master coord2
+Running: datanode master dn1
+Running: datanode master dn2
+Running: datanode master dn3
+PGXC 
+
+测试2个coord1 coord2是否正常 
+
+[pgxl@sdw01 coord_master.1]$ psql -d test
+psql (PGXL 9.5r1.5, based on PG 9.5.6 (Postgres-XL 9.5r1.5))
+Type "help" for help.
+
+test=# SELECT xc_node_id, count(*) FROM disttab GROUP BY xc_node_id;
+ xc_node_id |  count   
+------------+----------
+ -700122826 | 17078232
+  352366662 | 16480318
+ -560021589 | 15450950
+(3 rows)
+
+test=# \q
+[pgxl@sdw01 coord_master.1]$ psql -h sdw02 -p 5433 -d test
+psql (PGXL 9.5r1.5, based on PG 9.5.6 (Postgres-XL 9.5r1.5))
+Type "help" for help.
+
+test=# SELECT xc_node_id, count(*) FROM disttab GROUP BY xc_node_id;
+ xc_node_id |  count   
+------------+----------
+ -700122826 | 17078232
+  352366662 | 16480318
+ -560021589 | 15450950
+(3 rows)
+
+test=# 
+
+
+

@@ -1,0 +1,367 @@
+一、查看当前节点使用情况
+
+
+test=# select * from pgxc_node;
+ node_name | node_type | node_port | node_host | nodeis_primary | nodeis_preferred |   node_id   
+-----------+-----------+-----------+-----------+----------------+------------------+-------------
+ coord1    | C         |      5432 | sdw01     | f              | f                |  1885696643
+ dn1       | D         |      5434 | sdw02     | f              | f                |  -560021589
+ dn2       | D         |      5435 | sdw03     | f              | f                |   352366662
+ coord2    | C         |      5433 | sdw02     | f              | f                | -1197102633
+ dn3       | D         |      5436 | sdw01     | f              | f                |  -700122826
+(5 rows)
+
+
+
+
+二、在mdw节点上新建coord1节点slave
+[pgxl@mdw pgxc_ctl]$ pgxc_ctl 
+/bin/bash
+Installing pgxc_ctl_bash script as /home/pgxl/pgxc_ctl/pgxc_ctl_bash.
+Installing pgxc_ctl_bash script as /home/pgxl/pgxc_ctl/pgxc_ctl_bash.
+Reading configuration using /home/pgxl/pgxc_ctl/pgxc_ctl_bash --home /home/pgxl/pgxc_ctl --configuration /home/pgxl/pgxc_ctl/pgxc_ctl.conf
+Finished reading configuration.
+   ******** PGXC_CTL START ***************
+
+Current directory: /home/pgxl/pgxc_ctl
+PGXC add coordinator slave coord1 mdw 5448 40331 /usr/local/pgxl-9.5/data/cn_slave.1 none /usr/local/pgxl-9.5/data/cn_archlog.1 
+Actual Command: ssh pgxl@mdw "( mkdir -p /usr/local/pgxl-9.5/data/cn_slave.1;chmod 0700 /usr/local/pgxl-9.5/data/cn_slave.1 ) > /tmp/mdw_STDOUT_22955_0 2>&1" < /dev/null > /dev/null 2>&1
+Bring remote stdout: scp pgxl@mdw:/tmp/mdw_STDOUT_22955_0 /tmp/STDOUT_22955_1 > /dev/null 2>&1
+Actual Command: ssh pgxl@mdw "( rm -rf none; mkdir -p none;chmod 0700 none ) > /tmp/mdw_STDOUT_22955_2 2>&1" < /dev/null > /dev/null 2>&1
+Bring remote stdout: scp pgxl@mdw:/tmp/mdw_STDOUT_22955_2 /tmp/STDOUT_22955_3 > /dev/null 2>&1
+Actual Command: ssh pgxl@sdw01 "( pg_ctl stop -w -Z coordinator -D /usr/local/pgxl-9.5/data/coord_master.1 -m fast ) > /tmp/mdw_STDOUT_22955_4 2>&1" < /dev/null > /dev/null 2>&1
+Bring remote stdout: scp pgxl@sdw01:/tmp/mdw_STDOUT_22955_4 /tmp/STDOUT_22955_5 > /dev/null 2>&1
+Actual Command: ssh pgxl@sdw01 "( pg_ctl start -w -Z coordinator -D /usr/local/pgxl-9.5/data/coord_master.1 ) > /tmp/mdw_STDOUT_22955_6 2>&1" < /dev/null > /dev/null 2>&1
+Bring remote stdout: scp pgxl@sdw01:/tmp/mdw_STDOUT_22955_6 /tmp/STDOUT_22955_7 > /dev/null 2>&1
+LOG:  redirecting log output to logging collector process
+HINT:  Future log output will appear in directory "pg_log".
+Actual Command: ssh pgxl@mdw "( pg_basebackup -p 5432 -h sdw01 -D /usr/local/pgxl-9.5/data/cn_slave.1 -x ) > /tmp/mdw_STDOUT_22955_8 2>&1" < /dev/null > /dev/null 2>&1
+Bring remote stdout: scp pgxl@mdw:/tmp/mdw_STDOUT_22955_8 /tmp/STDOUT_22955_9 > /dev/null 2>&1
+Actual Command: ssh pgxl@mdw "( pg_ctl start -w -Z coordinator -D /usr/local/pgxl-9.5/data/cn_slave.1 ) > /tmp/mdw_STDOUT_22955_10 2>&1" < /dev/null > /dev/null 2>&1
+Bring remote stdout: scp pgxl@mdw:/tmp/mdw_STDOUT_22955_10 /tmp/STDOUT_22955_11 > /dev/null 2>&1
+LOG:  redirecting log output to logging collector process
+HINT:  Future log output will appear in directory "pg_log".
+PGXC monitor all
+Running: gtm master
+Running: gtm slave
+Running: gtm proxy gtm_pxy1
+Running: gtm proxy gtm_pxy2
+Running: coordinator master coord1
+Running: coordinator slave coord1
+Running: coordinator master coord2
+Running: datanode master dn1
+Running: datanode slave dn1
+Running: datanode master dn2
+Running: datanode master dn3
+PGXC 
+
+
+
+
+
+[root@sdw03 ~]#  exit
+登出
+Connection to sdw03 closed.
+[root@mdw ~]#  psql -h sdw01 -Upgxl -d test
+psql (8.3.23, server 9.5.6 (Postgres-XL 9.5r1.5))
+WARNING: psql version 8.3, server version 9.5.
+         Some psql features might not work.
+Type "help" for help.
+
+test=# select * from pgxc_node;
+ node_name | node_type | node_port | node_host | nodeis_primary | nodeis_preferred |   node_id   
+-----------+-----------+-----------+-----------+----------------+------------------+-------------
+ coord1    | C         |      5432 | sdw01     | f              | f                |  1885696643
+ dn1       | D         |      5434 | sdw02     | f              | f                |  -560021589
+ dn2       | D         |      5435 | sdw03     | f              | f                |   352366662
+ coord2    | C         |      5433 | sdw02     | f              | f                | -1197102633
+ dn3       | D         |      5436 | sdw01     | f              | f                |  -700122826
+(5 rows)
+
+test=# EXECUTE DIRECT ON(coord1) 'SELECT client_hostname, state, sync_state FROM pg_stat_replication'; 
+ client_hostname |   state   | sync_state 
+-----------------+-----------+------------
+                 | streaming | async
+(1 row)
+
+test=# 
+
+
+
+
+
+Current directory: /home/pgxl/pgxc_ctl
+PGXC  stop -m immediate datanode master dn1  //停止dn1主节点
+Stopping datanode master dn1.
+Done.
+PGXC failover datanode dn1    //切换dn1 slave节点为主节点
+
+
+
+stop -m immediate coordinator master coord1  
+
+
+
+PGXC stop -m immediate coordinator master coord1
+Stopping coordinator master coord1.
+Done.
+PGXC monitor all
+Running: gtm master
+Running: gtm slave
+Running: gtm proxy gtm_pxy1
+Running: gtm proxy gtm_pxy2
+Not running: coordinator master coord1
+Running: coordinator slave coord1
+Running: coordinator master coord2
+Running: datanode master dn1
+Running: datanode slave dn1
+Running: datanode master dn2
+Running: datanode master dn3
+PGXC 
+
+
+PGXC monitor all
+Running: gtm master
+Running: gtm slave
+Running: gtm proxy gtm_pxy1
+Running: gtm proxy gtm_pxy2
+Not running: coordinator master coord1
+Running: coordinator slave coord1
+Running: coordinator master coord2
+Running: datanode master dn1
+Running: datanode slave dn1
+Running: datanode master dn2
+Running: datanode master dn3
+PGXC failover coordinator  coord1
+Failover coordinators.
+Failover the coordinator coord1.
+Failover coordinator coord1 using GTM itself
+Actual Command: ssh pgxl@mdw "( pg_ctl promote -Z coordinator -D /usr/local/pgxl-9.5/data/cn_slave.1 ) > /tmp/mdw_STDOUT_22955_14 2>&1" < /dev/null > /dev/null 2>&1
+Bring remote stdout: scp pgxl@mdw:/tmp/mdw_STDOUT_22955_14 /tmp/STDOUT_22955_15 > /dev/null 2>&1
+Actual Command: ssh pgxl@mdw "( pg_ctl restart -Z coordinator -D /usr/local/pgxl-9.5/data/cn_slave.1 -w -o -i; sleep 1 ) > /tmp/mdw_STDOUT_22955_16 2>&1" < /dev/null > /dev/null 2>&1
+Bring remote stdout: scp pgxl@mdw:/tmp/mdw_STDOUT_22955_16 /tmp/STDOUT_22955_17 > /dev/null 2>&1
+LOG:  redirecting log output to logging collector process
+HINT:  Future log output will appear in directory "pg_log".
+ALTER NODE
+ pgxc_pool_reload 
+------------------
+ t
+(1 row)
+
+EXECUTE DIRECT
+ pgxc_pool_reload 
+------------------
+ t
+(1 row)
+
+EXECUTE DIRECT
+ pgxc_pool_reload 
+------------------
+ t
+(1 row)
+
+EXECUTE DIRECT
+ pgxc_pool_reload 
+------------------
+ t
+(1 row)
+
+ALTER NODE
+ pgxc_pool_reload 
+------------------
+ t
+(1 row)
+
+EXECUTE DIRECT
+ pgxc_pool_reload 
+------------------
+ t
+(1 row)
+
+EXECUTE DIRECT
+ pgxc_pool_reload 
+------------------
+ t
+(1 row)
+
+EXECUTE DIRECT
+ pgxc_pool_reload 
+------------------
+ t
+(1 row)
+
+Done.
+PGXC monitor all
+Running: gtm master
+Running: gtm slave
+Running: gtm proxy gtm_pxy1
+Running: gtm proxy gtm_pxy2
+Running: coordinator master coord1
+Running: coordinator master coord2
+Running: datanode master dn1
+Running: datanode slave dn1
+Running: datanode master dn2
+Running: datanode master dn3
+PGXC 
+
+
+
+
+[root@mdw ~]# psql -h sdw01 -Upgxl -d test
+psql (8.3.23, server 9.5.6 (Postgres-XL 9.5r1.5))
+WARNING: psql version 8.3, server version 9.5.
+         Some psql features might not work.
+Type "help" for help.
+
+test=# select * from pgxc_node;
+ node_name | node_type | node_port | node_host | nodeis_primary | nodeis_preferred |   node_id   
+-----------+-----------+-----------+-----------+----------------+------------------+-------------
+ coord1    | C         |      5432 | sdw01     | f              | f                |  1885696643
+ dn1       | D         |      5434 | sdw02     | f              | f                |  -560021589
+ dn2       | D         |      5435 | sdw03     | f              | f                |   352366662
+ coord2    | C         |      5433 | sdw02     | f              | f                | -1197102633
+ dn3       | D         |      5436 | sdw01     | f              | f                |  -700122826
+(5 rows)
+
+test=# \q
+[root@mdw ~]# psql -h sdw01 -Upgxl -d test
+psql: could not connect to server: 拒绝连接
+	Is the server running on host "sdw01" (10.0.0.2) and accepting
+	TCP/IP connections on port 5432?
+[root@mdw ~]# psql -h mdw -p5448 -Upgxl -d test
+psql (8.3.23, server 9.5.6 (Postgres-XL 9.5r1.5))
+WARNING: psql version 8.3, server version 9.5.
+         Some psql features might not work.
+Type "help" for help.
+
+test=# select * from pgxc_node;
+ node_name | node_type | node_port | node_host | nodeis_primary | nodeis_preferred |   node_id   
+-----------+-----------+-----------+-----------+----------------+------------------+-------------
+ dn1       | D         |      5434 | sdw02     | f              | f                |  -560021589
+ dn2       | D         |      5435 | sdw03     | f              | f                |   352366662
+ coord2    | C         |      5433 | sdw02     | f              | f                | -1197102633
+ dn3       | D         |      5436 | sdw01     | f              | f                |  -700122826
+ coord1    | C         |      5448 | mdw       | f              | f                |  1885696643
+(5 rows)
+
+test=# 
+
+
+旧的切换回来：
+
+[pgxl@mdw pgxc_ctl]$ pgxc_ctl 
+/bin/bash
+Installing pgxc_ctl_bash script as /home/pgxl/pgxc_ctl/pgxc_ctl_bash.
+Installing pgxc_ctl_bash script as /home/pgxl/pgxc_ctl/pgxc_ctl_bash.
+Reading configuration using /home/pgxl/pgxc_ctl/pgxc_ctl_bash --home /home/pgxl/pgxc_ctl --configuration /home/pgxl/pgxc_ctl/pgxc_ctl.conf
+Finished reading configuration.
+   ******** PGXC_CTL START ***************
+
+Current directory: /home/pgxl/pgxc_ctl
+PGXC add coordinator slave coord1 sdw01 5432 40351 /usr/local/pgxl-9.5/data/coord_master.2 none /usr/local/pgxl-9.5/data/cn_archlog.2 
+Actual Command: ssh pgxl@sdw01 "( mkdir -p /usr/local/pgxl-9.5/data/coord_master.2;chmod 0700 /usr/local/pgxl-9.5/data/coord_master.2 ) > /tmp/mdw_STDOUT_23676_0 2>&1" < /dev/null > /dev/null 2>&1
+Bring remote stdout: scp pgxl@sdw01:/tmp/mdw_STDOUT_23676_0 /tmp/STDOUT_23676_1 > /dev/null 2>&1
+Actual Command: ssh pgxl@sdw01 "( rm -rf none; mkdir -p none;chmod 0700 none ) > /tmp/mdw_STDOUT_23676_2 2>&1" < /dev/null > /dev/null 2>&1
+Bring remote stdout: scp pgxl@sdw01:/tmp/mdw_STDOUT_23676_2 /tmp/STDOUT_23676_3 > /dev/null 2>&1
+Actual Command: ssh pgxl@mdw "( pg_ctl stop -w -Z coordinator -D /usr/local/pgxl-9.5/data/cn_slave.1 -m fast ) > /tmp/mdw_STDOUT_23676_4 2>&1" < /dev/null > /dev/null 2>&1
+Bring remote stdout: scp pgxl@mdw:/tmp/mdw_STDOUT_23676_4 /tmp/STDOUT_23676_5 > /dev/null 2>&1
+Actual Command: ssh pgxl@mdw "( pg_ctl start -w -Z coordinator -D /usr/local/pgxl-9.5/data/cn_slave.1 ) > /tmp/mdw_STDOUT_23676_6 2>&1" < /dev/null > /dev/null 2>&1
+Bring remote stdout: scp pgxl@mdw:/tmp/mdw_STDOUT_23676_6 /tmp/STDOUT_23676_7 > /dev/null 2>&1
+LOG:  redirecting log output to logging collector process
+HINT:  Future log output will appear in directory "pg_log".
+Actual Command: ssh pgxl@sdw01 "( pg_basebackup -p 5448 -h mdw -D /usr/local/pgxl-9.5/data/coord_master.2 -x ) > /tmp/mdw_STDOUT_23676_8 2>&1" < /dev/null > /dev/null 2>&1
+Bring remote stdout: scp pgxl@sdw01:/tmp/mdw_STDOUT_23676_8 /tmp/STDOUT_23676_9 > /dev/null 2>&1
+Actual Command: ssh pgxl@sdw01 "( pg_ctl start -w -Z coordinator -D /usr/local/pgxl-9.5/data/coord_master.2 ) > /tmp/mdw_STDOUT_23676_10 2>&1" < /dev/null > /dev/null 2>&1
+Bring remote stdout: scp pgxl@sdw01:/tmp/mdw_STDOUT_23676_10 /tmp/STDOUT_23676_11 > /dev/null 2>&1
+LOG:  redirecting log output to logging collector process
+HINT:  Future log output will appear in directory "pg_log".
+PGXC monitor all
+Running: gtm master
+Running: gtm slave
+Running: gtm proxy gtm_pxy1
+Running: gtm proxy gtm_pxy2
+Running: coordinator master coord1
+Running: coordinator slave coord1
+Running: coordinator master coord2
+Running: datanode master dn1
+Running: datanode slave dn1
+Running: datanode master dn2
+Running: datanode master dn3
+PGXC stop -m immediate coordinator master coord1
+Stopping coordinator master coord1.
+Done.
+PGXC failover coordinator  coord1
+Failover coordinators.
+Failover the coordinator coord1.
+Failover coordinator coord1 using gtm gtm_pxy1
+Actual Command: ssh pgxl@sdw01 "( pg_ctl promote -Z coordinator -D /usr/local/pgxl-9.5/data/coord_master.2 ) > /tmp/mdw_STDOUT_23676_14 2>&1" < /dev/null > /dev/null 2>&1
+Bring remote stdout: scp pgxl@sdw01:/tmp/mdw_STDOUT_23676_14 /tmp/STDOUT_23676_15 > /dev/null 2>&1
+Actual Command: ssh pgxl@sdw01 "( pg_ctl restart -Z coordinator -D /usr/local/pgxl-9.5/data/coord_master.2 -w -o -i; sleep 1 ) > /tmp/mdw_STDOUT_23676_16 2>&1" < /dev/null > /dev/null 2>&1
+Bring remote stdout: scp pgxl@sdw01:/tmp/mdw_STDOUT_23676_16 /tmp/STDOUT_23676_17 > /dev/null 2>&1
+LOG:  redirecting log output to logging collector process
+HINT:  Future log output will appear in directory "pg_log".
+ALTER NODE
+ pgxc_pool_reload 
+------------------
+ t
+(1 row)
+
+EXECUTE DIRECT
+ pgxc_pool_reload 
+------------------
+ t
+(1 row)
+
+EXECUTE DIRECT
+ pgxc_pool_reload 
+------------------
+ t
+(1 row)
+
+EXECUTE DIRECT
+ pgxc_pool_reload 
+------------------
+ t
+(1 row)
+
+ALTER NODE
+ pgxc_pool_reload 
+------------------
+ t
+(1 row)
+
+EXECUTE DIRECT
+ pgxc_pool_reload 
+------------------
+ t
+(1 row)
+
+EXECUTE DIRECT
+ pgxc_pool_reload 
+------------------
+ t
+(1 row)
+
+EXECUTE DIRECT
+ pgxc_pool_reload 
+------------------
+ t
+(1 row)
+
+Done.
+PGXC 
+
+
+
+[pgxl@sdw01 ~]$ psql -d test
+psql (PGXL 9.5r1.5, based on PG 9.5.6 (Postgres-XL 9.5r1.5))
+Type "help" for help.
+
+test=# SELECT count(*) FROM disttab
+;
+  count  
+---------
+ 2361000
+(1 row)
+
+test=# 

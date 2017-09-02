@@ -1,0 +1,220 @@
+
+一、新建hash分区表
+test=# CREATE TABLE padre (                                                       
+   id             serial not null,
+   nombre         text not null,
+   fch_creado     timestamptz not null
+) PARTITION BY RANGE ( id );
+CREATE TABLE
+test=# CREATE TABLE hijo_0  partition of padre for values from (unbounded) to (9);
+CREATE TABLE
+test=# CREATE TABLE hijo_1  partition of padre for values from (9) to (20);
+CREATE TABLE
+test=# CREATE TABLE hijo_2  partition of padre for values from (20) to (30);
+CREATE TABLE
+test=# CREATE TABLE hijo_3  partition of padre for values from (30) to (unbounded);
+CREATE TABLE
+
+二、播入测试数据
+test=#  insert into padre(id,nombre,fch_creado) values(generate_series(1,10000),'tank','2017-07-12:23:59');
+INSERT 0 10000
+test=# select count(*) from padre;
+ count 
+-------
+ 10000
+(1 row)
+
+test=# select count(*) from padre;
+ count 
+-------
+ 10000
+(1 row)
+
+test=# select count(*) from padre;
+ count 
+-------
+ 10000
+(1 row)
+
+test=# select count(*) from padre where id < 10;
+ count 
+-------
+     9
+(1 row)
+
+test=# explain select count(*) from padre where id < 10;
+                                    QUERY PLAN                                     
+-----------------------------------------------------------------------------------
+ Finalize Aggregate  (cost=150.15..150.16 rows=1 width=8)
+   ->  Remote Subquery Scan on all (dn1,dn2)  (cost=150.13..150.15 rows=1 width=8)
+         ->  Partial Aggregate  (cost=50.13..50.14 rows=1 width=8)
+               ->  Append  (cost=0.00..48.25 rows=754 width=0)
+                     ->  Seq Scan on hijo_0  (cost=0.00..24.12 rows=377 width=0)
+                           Filter: (id < 10)
+                     ->  Seq Scan on hijo_1  (cost=0.00..24.12 rows=377 width=0)
+                           Filter: (id < 10)
+(8 rows)
+
+test=# explain select * from padre where id < 10;
+                                 QUERY PLAN                                  
+-----------------------------------------------------------------------------
+ Remote Subquery Scan on all (dn1,dn2)  (cost=0.00..48.25 rows=754 width=44)
+   ->  Append  (cost=0.00..48.25 rows=754 width=44)
+         ->  Seq Scan on hijo_0  (cost=0.00..24.12 rows=377 width=44)
+               Filter: (id < 10)
+         ->  Seq Scan on hijo_1  (cost=0.00..24.12 rows=377 width=44)
+               Filter: (id < 10)
+(6 rows)
+
+test=# explain select * from padre where id < 8;
+                                 QUERY PLAN                                  
+-----------------------------------------------------------------------------
+ Remote Subquery Scan on all (dn1,dn2)  (cost=0.00..24.12 rows=377 width=44)
+   ->  Append  (cost=0.00..24.12 rows=377 width=44)
+         ->  Seq Scan on hijo_0  (cost=0.00..24.12 rows=377 width=44)
+               Filter: (id < 8)
+(4 rows)
+
+test=# SELECT xc_node_id, count(*) FROM padre GROUP BY xc_node_id;
+ xc_node_id | count 
+------------+-------
+ -560021589 |  5039
+  352366662 |  4961
+(2 rows)
+
+test=# 
+
+
+
+test=# explain select * from padre where id < 65 and id>17;
+                                 QUERY PLAN                                 
+----------------------------------------------------------------------------
+ Remote Subquery Scan on all (dn1,dn2)  (cost=0.00..80.85 rows=18 width=44)
+   ->  Append  (cost=0.00..80.85 rows=18 width=44)
+         ->  Seq Scan on hijo_1  (cost=0.00..26.95 rows=6 width=44)
+               Filter: ((id < 65) AND (id > 17))
+         ->  Seq Scan on hijo_2  (cost=0.00..26.95 rows=6 width=44)
+               Filter: ((id < 65) AND (id > 17))
+         ->  Seq Scan on hijo_3  (cost=0.00..26.95 rows=6 width=44)
+               Filter: ((id < 65) AND (id > 17))
+(8 rows)
+
+test=# 
+
+
+
+二、拆开分区添加分区表
+
+
+test=# alter table padre detach partition hijo_3;
+ALTER TABLE
+test=# select count(*) from padre;
+ count 
+-------
+    29
+(1 row)
+
+test=# \dt
+        List of relations
+ Schema |  Name   | Type  | Owner 
+--------+---------+-------+-------
+ public | disttab | table | pgxl
+ public | hijo_0  | table | pgxl
+ public | hijo_1  | table | pgxl
+ public | hijo_2  | table | pgxl
+ public | hijo_3  | table | pgxl
+ public | padre   | table | pgxl
+(6 rows)
+
+
+
+三、重新添加分区表
+test=# alter table padre attach partition hijo_3 FOR VALUES FROM (30) TO (unbounded);
+ALTER TABLE
+test=# select count(*) from padre;
+ count 
+-------
+ 10000
+(1 row)
+
+test=# 
+
+
+test=# create table hijo_4 as select * from hijo_3 where id < 41;
+INSERT 0 11
+test=# delete  from hijo_3 where id < 41;
+DELETE 11
+
+test=# alter table padre attach partition hijo_4 FOR VALUES FROM (30) TO (40);
+ERROR:  column "id" in child table must be marked NOT NULL
+                           ^
+test=# alter table hijo_4 alter  column id set not null;
+ALTER TABLE
+test=# alter table padre attach partition hijo_4 FOR VALUES FROM (30) TO (40);
+ERROR:  column "nombre" in child table must be marked NOT NULL
+test=# alter table hijo_4 alter  column nombre set not null;
+ALTER TABLE
+test=# alter table padre attach partition hijo_4 FOR VALUES FROM (30) TO (40);
+ERROR:  column "fch_creado" in child table must be marked NOT NULL
+test=# alter table hijo_4 alter  column fch_creado set not null;
+ALTER TABLE
+test=# alter table padre attach partition hijo_4 FOR VALUES FROM (30) TO (40);
+ERROR:  partition constraint is violated by some row
+test=# alter table padre attach partition hijo_4 FOR VALUES FROM (31) TO (40);
+ERROR:  partition constraint is violated by some row
+test=# alter table padre attach partition hijo_4 FOR VALUES FROM (31) TO (41);
+ERROR:  partition constraint is violated by some row
+test=# \d+ padre
+                                                           Table "public.padre"
+   Column   |           Type           | Collation | Nullable |              Default              | St
+orage  | Stats target | Description 
+------------+--------------------------+-----------+----------+-----------------------------------+---
+-------+--------------+-------------
+ id         | integer                  |           | not null | nextval('padre_id_seq'::regclass) | pl
+ain    |              | 
+ nombre     | text                     |           | not null |                                   | ex
+tended |              | 
+ fch_creado | timestamp with time zone |           | not null |                                   | pl
+ain    |              | 
+Partition key: RANGE (id)
+Partitions: hijo_0 FOR VALUES FROM (UNBOUNDED) TO (9),
+            hijo_1 FOR VALUES FROM (9) TO (20),
+            hijo_2 FOR VALUES FROM (20) TO (30)
+Distribute By: HASH(id)
+Location Nodes: ALL DATANODES
+
+test=# alter table padre attach partition hijo_4 FOR VALUES FROM (30) TO (41);
+ALTER TABLE
+test=# alter table padre attach partition hijo_3 FOR VALUES FROM (41) TO (unbounded);
+ALTER TABLE
+test=# \d+ padre
+                                                           Table "public.padre"
+   Column   |           Type           | Collation | Nullable |              Default              | Storage  | Stats target | Descripti
+on 
+------------+--------------------------+-----------+----------+-----------------------------------+----------+--------------+----------
+---
+ id         | integer                  |           | not null | nextval('padre_id_seq'::regclass) | plain    |              | 
+ nombre     | text                     |           | not null |                                   | extended |              | 
+ fch_creado | timestamp with time zone |           | not null |                                   | plain    |              | 
+Partition key: RANGE (id)
+Partitions: hijo_0 FOR VALUES FROM (UNBOUNDED) TO (9),
+            hijo_1 FOR VALUES FROM (9) TO (20),
+            hijo_2 FOR VALUES FROM (20) TO (30),
+            hijo_3 FOR VALUES FROM (41) TO (UNBOUNDED),
+            hijo_4 FOR VALUES FROM (30) TO (41)
+Distribute By: HASH(id)
+Location Nodes: ALL DATANODES
+
+test=#  select count(*) from padre;
+ count 
+-------
+ 10000
+(1 row)
+
+test=# 
+
+
+
+
+
+

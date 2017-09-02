@@ -1,0 +1,104 @@
+test=# SELECT * FROM pgxc_node;
+ node_name | node_type | node_port | node_host | nodeis_primary | nodeis_preferred |   node_id   
+-----------+-----------+-----------+-----------+----------------+------------------+-------------
+ coord1    | C         |      5432 | sdw01     | f              | f                |  1885696643
+ coord2    | C         |      5433 | sdw02     | f              | f                | -1197102633
+ dn1       | D         |      5434 | sdw02     | f              | f                |  -560021589
+ dn2       | D         |      5435 | sdw03     | f              | f                |   352366662
+(4 rows)
+
+test=# SELECT xc_node_id, count(*) FROM padre GROUP BY xc_node_id;
+ xc_node_id | count 
+------------+-------
+ -560021589 |  5039
+  352366662 |  4961
+(2 rows)
+
+test=# SELECT xc_node_id, count(*) FROM padre GROUP BY xc_node_id;
+ xc_node_id | count 
+------------+-------
+ -560021589 |  5039
+  352366662 |  4961
+(2 rows)
+
+test=# SELECT * FROM pgxc_node;
+ node_name | node_type | node_port | node_host | nodeis_primary | nodeis_preferred |   node_id   
+-----------+-----------+-----------+-----------+----------------+------------------+-------------
+ coord1    | C         |      5432 | sdw01     | f              | f                |  1885696643
+ coord2    | C         |      5433 | sdw02     | f              | f                | -1197102633
+ dn1       | D         |      5434 | sdw02     | f              | f                |  -560021589
+ dn2       | D         |      5435 | sdw03     | f              | f                |   352366662
+ dn3       | D         |      5436 | mdw       | f              | f                |  -700122826
+(5 rows)
+
+test=# \dt
+        List of relations
+ Schema |  Name  | Type  | Owner 
+--------+--------+-------+-------
+ public | hijo_0 | table | pgxl
+ public | hijo_1 | table | pgxl
+ public | hijo_2 | table | pgxl
+ public | hijo_3 | table | pgxl
+ public | padre  | table | pgxl
+(5 rows)
+
+test=# ALTER TABLE padre ADD NODE (dn3);  // 不能直接对分区表进行重新分配
+ERROR:  Error while running COPY
+test=# SELECT * FROM pgxc_node;
+ node_name | node_type | node_port | node_host | nodeis_primary | nodeis_preferred |   node_id   
+-----------+-----------+-----------+-----------+----------------+------------------+-------------
+ coord1    | C         |      5432 | sdw01     | f              | f                |  1885696643
+ coord2    | C         |      5433 | sdw02     | f              | f                | -1197102633
+ dn1       | D         |      5434 | sdw02     | f              | f                |  -560021589
+ dn2       | D         |      5435 | sdw03     | f              | f                |   352366662
+ dn3       | D         |      5436 | mdw       | f              | f                |  -700122826
+(5 rows)
+
+test=# SELECT xc_node_id, count(*) FROM padre GROUP BY xc_node_id;
+ xc_node_id | count 
+------------+-------
+ -560021589 |  5039
+  352366662 |  4961
+(2 rows)
+
+test=# ALTER TABLE hijo_0 ADD NODE (dn3);
+ALTER TABLE
+test=# SELECT xc_node_id, count(*) FROM padre GROUP BY xc_node_id;
+ xc_node_id | count 
+------------+-------
+  352366662 |  4961
+ -560021589 |  5036
+ -700122826 |     3
+(3 rows)
+
+test=# ALTER TABLE hijo_1 ADD NODE (dn3);
+ALTER TABLE
+test=# SELECT xc_node_id, count(*) FROM padre GROUP BY xc_node_id;
+ xc_node_id | count 
+------------+-------
+  352366662 |  4961
+ -560021589 |  5032
+ -700122826 |     7
+(3 rows)
+
+test=# ALTER TABLE hijo_2 ADD NODE (dn3);
+ALTER TABLE
+test=# SELECT xc_node_id, count(*) FROM padre GROUP BY xc_node_id;
+ xc_node_id | count 
+------------+-------
+  352366662 |  4958
+ -560021589 |  5032
+ -700122826 |    10
+(3 rows)
+
+test=# ALTER TABLE hijo_3 ADD NODE (dn3);
+ALTER TABLE
+test=# SELECT xc_node_id, count(*) FROM padre GROUP BY xc_node_id;
+ xc_node_id | count 
+------------+-------
+ -700122826 |  3390
+ -560021589 |  3249
+  352366662 |  3361
+(3 rows)
+
+test=# 

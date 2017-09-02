@@ -1,0 +1,700 @@
+
+
+一、Postgres-XL服务器规划
+
+
+10.0.0.1	mdw --（gtm 功能） 
+10.0.0.2        sdw01 ---（coordinator）
+10.0.0.3        sdw02 ---（coordinator:datanode）
+10.0.0.4        sdw03 ---（datanode）
+
+
+
+二、以下操作，对每个服务器节点都适用（注意这里是centos7）。 
+1、关闭防火墙：
+
+[root@localhost ~]# systemctl stop firewalld.service
+[root@localhost ~]# systemctl disable firewalld.service
+
+2、selinux设置:
+
+[root@localhost ~]#vim /etc/selinux/config
+
+设置SELINUX=disabled，保存退出。
+
+# This file controls the state of SELinux on the system.
+# SELINUX= can take one of these three values:
+#     enforcing - SELinux security policy is enforced.
+#     permissive - SELinux prints warnings instead of enforcing.
+#     disabled - No SELinux policy is loaded.
+SELINUX=disabled
+# SELINUXTYPE= can take one of three two values:
+#     targeted - Targeted processes are protected,
+#     minimum - Modification of targeted policy. Only selected processes are protected.
+#     mls - Multi Level Security protection.
+
+
+3、安装编译所需的库文件-（各节点）
+
+#yum -y install rsync gcc perl-ExtUtils-Embed readline-devel zlib-devel openssl-devel pam pam-devel tcl tcl-devel libxml2-devel libxslt-devel python-devel docbook-style-dsssl flex bison openjade 
+
+4、安装数据库软件（各节点）
+
+#tar -zxvf postgres-xl-9.5r1.5.tar.gz
+
+#cd postgres-xl-9.5r1.5
+
+#./configure --prefix=/usr/local/pgxl-9.5
+#gmake world
+#gmake install-world
+
+
+5、各节新建pgxl用户并配置ssh免密码登录（各节点）
+#useradd postgres
+
+#chown postgres:postgres -R /usr/local/pgxl-9.5 （各节点）
+
+
+在10.0.0.1（GTM）节点配置（root、pgxl用户通信免密码）：
+
+[postgres@mdw ~]$ ssh-keygen  (各节点)
+Generating public/private rsa key pair.
+Enter file in which to save the key (/home/postgres/.ssh/id_rsa): 
+Enter passphrase (empty for no passphrase): 
+Enter same passphrase again: 
+Your identification has been saved in /home/postgres/.ssh/id_rsa.
+Your public key has been saved in /home/postgres/.ssh/id_rsa.pub.
+The key fingerprint is:
+16:0c:d5:a4:7f:27:00:e0:6f:9d:3e:a4:d2:e8:45:3c postgres@pg02
+The key's randomart image is:
++--[ RSA 2048]----+
+|      oooo.      |
+|     . o o.      |
+|      . + .      |
+|       o + o     |
+|        E = o .  |
+|       * = . o   |
+|      o + o      |
+|     . o   .     |
+|      .          |
++-----------------+
+[postgres@pg02 ~]$ ssh-copy-id sdw01 (各节点)
+The authenticity of host 'pg01 (108.88.3.116)' can't be established.
+RSA key fingerprint is 89:34:e7:e3:e7:de:be:21:fa:1c:66:63:01:72:42:bd.
+Are you sure you want to continue connecting (yes/no)? yes
+Warning: Permanently added 'pg01' (RSA) to the list of known hosts.
+postgres@pg01's password: 
+Permission denied, please try again.
+postgres@pg01's password: 
+
+
+
+5、配置环境变量（一定要配置.bashrc否则使用pgxc_ctl提示找不到gtminit\pg_ctl等命令） （各节点）
+
+
+[postgres@sdw01 ~]$ more .bashrc 
+# .bashrc
+
+# Source global definitions
+if [ -f /etc/bashrc ]; then
+	. /etc/bashrc
+fi
+
+# Uncomment the following line if you don't like systemctl's auto-paging feature:
+# export SYSTEMD_PAGER=
+
+# User specific aliases and functions
+
+export PGHOME=/usr/local/pgxl-9.5
+
+export LD_LIBRARY_PATH=$PGHOME/lib:$LD_LIBRARY_PATH
+
+export PATH=$PATH:$HOME/bin:$PGHOME/bin
+[pgxl@sdw01 ~]$ more .bash_profile 
+# .bash_profile
+
+# Get the aliases and functions
+if [ -f ~/.bashrc ]; then
+	. ~/.bashrc
+fi
+
+# User specific environment and startup programs
+
+PATH=$PATH:$HOME/.local/bin:$HOME/bin
+
+export PATH
+
+
+export PGHOME=/usr/local/pgxl-9.5
+
+export LD_LIBRARY_PATH=$PGHOME/lib:$LD_LIBRARY_PATH
+
+export PATH=$PATH:$HOME/bin:$PGHOME/bin
+[pgxl@sdw01 ~]$ 
+
+
+
+
+三、生pgxc-ctl.conf集群配置文件
+
+$ export dataDirRoot=$HOME/DATA/pgxl/nodes
+$ mkdir $HOME/pgxc_ctl
+$ pgxc_ctl
+Installing pgxc_ctl_bash script as /home/pgxl/pgxc_ctl/pgxc_ctl_bash.
+Installing pgxc_ctl_bash script as /home/pgxl/pgxc_ctl/pgxc_ctl_bash.
+Reading configuration using /home/pgxl/pgxc_ctl/pgxc_ctl_bash --home
+/Users/postgres/pgxc_ctl --configuration
+/Users/postgres/pgxc_ctl/pgxc_ctl.conf
+Finished reading configuration.
+   ******** PGXC_CTL START ***************
+
+   Current directory: /Users/postgres/pgxc_ctl
+PGXC$  prepare config empty
+PGXC$  exit
+
+
+四、修改默认pgxc_ctl.conf 如下参数
+
+
+pgxcInstallDir=/usr/local/pgxl-9.5
+
+pgxcOwner=postgres
+
+coordPgHbaEntries=(10.0.0.0/24)
+
+
+datanodePgHbaEntries=(10.0.0.0/24)
+
+
+五、新建Gtm\Coord\Datanode功能节点
+
+1、新建gtm功能节点
+
+[pgxl@mdw ~]$ pgxc_ctl 
+/bin/bash
+Installing pgxc_ctl_bash script as /home/pgxl/pgxc_ctl/pgxc_ctl_bash.
+Installing pgxc_ctl_bash script as /home/pgxl/pgxc_ctl/pgxc_ctl_bash.
+Reading configuration using /home/pgxl/pgxc_ctl/pgxc_ctl_bash --home /home/pgxl/pgxc_ctl --configuration /home/pgxl/pgxc_ctl/pgxc_ctl.conf
+Finished reading configuration.
+   ******** PGXC_CTL START ***************
+
+Current directory: /home/pgxl/pgxc_ctl
+
+PGXC add gtm master gtm mdw 6666 /usr/local/pgxl-9.5/data/gtm     //新建gtm节点指定端口、节点服务器、gtm目录
+
+Initialize GTM master
+The files belonging to this GTM system will be owned by user "pgxl".
+This user must also own the server process.
+
+
+fixing permissions on existing directory /usr/local/pgxl-9.5/data/gtm ... ok
+creating configuration files ... ok
+creating control file ... ok
+
+Success.
+Done.
+Start GTM master
+waiting for server to shut down.... done
+server stopped
+server starting
+PGXC monitor all
+Running: gtm master
+
+2、新建coordinator节点
+PGXC add coordinator master coord1 sdw01 5432 30011 /usr/local/pgxl-9.5/data/coord_master.1 none none /新建coordinator 指定端口号 coord目录
+
+Actual Command: ssh pgxl@sdw01 "( PGXC_CTL_SILENT=1 initdb -D /usr/local/pgxl-9.5/data/coord_master.1 --nodename coord1 ) > /tmp/mdw_STDOUT_6318_9 2>&1" < /dev/null > /dev/null 2>&1
+
+Bring remote stdout: scp pgxl@sdw01:/tmp/mdw_STDOUT_6318_9 /tmp/STDOUT_6318_10 > /dev/null 2>&1
+The files belonging to this database system will be owned by user "pgxl".
+This user must also own the server process.
+
+The database cluster will be initialized with locale "en_US.UTF-8".
+The default database encoding has accordingly been set to "UTF8".
+The default text search configuration will be set to "english".
+
+Data page checksums are disabled.
+
+creating directory /usr/local/pgxl-9.5/data/coord_master.1 ... ok
+creating subdirectories ... ok
+selecting default max_connections ... 100
+selecting default shared_buffers ... 128MB
+selecting dynamic shared memory implementation ... posix
+creating configuration files ... ok
+creating template1 database in /usr/local/pgxl-9.5/data/coord_master.1/base/1 ... ok
+initializing pg_authid ... ok
+initializing dependencies ... ok
+creating system views ... ok
+creating cluster information ... ok
+loading system objects' descriptions ... ok
+creating collations ... ok
+creating conversions ... ok
+creating dictionaries ... ok
+setting privileges on built-in objects ... ok
+creating information schema ... ok
+loading PL/pgSQL server-side language ... ok
+vacuuming database template1 ... ok
+copying template1 to template0 ... ok
+copying template1 to postgres ... ok
+syncing data to disk ... ok
+freezing database template0 ... ok
+freezing database template1 ... ok
+freezing database postgres ... ok
+
+WARNING: enabling "trust" authentication for local connections
+You can change this by editing pg_hba.conf or using the option -A, or
+--auth-local and --auth-host, the next time you run initdb.
+
+Success.
+Starting coordinator master coord1
+LOG:  redirecting log output to logging collector process
+HINT:  Future log output will appear in directory "pg_log".
+Done.
+ALTER NODE
+ pgxc_pool_reload 
+------------------
+ t
+(1 row)
+
+
+
+
+3、新建coordinator2 节点
+
+
+PGXC add coordinator master coord2 sdw02 5433 30012 /usr/local/pgxl-9.5/data/coord_master.2 none none  //新建coordinator2 指定端口号 coord2目录
+Actual Command: ssh pgxl@sdw02 "( PGXC_CTL_SILENT=1 initdb -D /usr/local/pgxl-9.5/data/coord_master.2 --nodename coord2 ) > /tmp/mdw_STDOUT_6318_13 2>&1" < /dev/null > /dev/null 2>&1
+Bring remote stdout: scp pgxl@sdw02:/tmp/mdw_STDOUT_6318_13 /tmp/STDOUT_6318_14 > /dev/null 2>&1
+The files belonging to this database system will be owned by user "pgxl".
+This user must also own the server process.
+
+The database cluster will be initialized with locale "en_US.UTF-8".
+The default database encoding has accordingly been set to "UTF8".
+The default text search configuration will be set to "english".
+
+Data page checksums are disabled.
+
+creating directory /usr/local/pgxl-9.5/data/coord_master.2 ... ok
+creating subdirectories ... ok
+selecting default max_connections ... 100
+selecting default shared_buffers ... 128MB
+selecting dynamic shared memory implementation ... posix
+creating configuration files ... ok
+creating template1 database in /usr/local/pgxl-9.5/data/coord_master.2/base/1 ... ok
+initializing pg_authid ... ok
+initializing dependencies ... ok
+creating system views ... ok
+creating cluster information ... ok
+loading system objects' descriptions ... ok
+creating collations ... ok
+creating conversions ... ok
+creating dictionaries ... ok
+setting privileges on built-in objects ... ok
+creating information schema ... ok
+loading PL/pgSQL server-side language ... ok
+vacuuming database template1 ... ok
+copying template1 to template0 ... ok
+copying template1 to postgres ... ok
+syncing data to disk ... ok
+freezing database template0 ... ok
+freezing database template1 ... ok
+freezing database postgres ... ok
+
+WARNING: enabling "trust" authentication for local connections
+You can change this by editing pg_hba.conf or using the option -A, or
+--auth-local and --auth-host, the next time you run initdb.
+
+Success.
+INFO:  please do not close this session until you are done adding the new node
+ pgxc_lock_for_backup 
+----------------------
+ t
+(1 row)
+
+Actual Command: ssh pgxl@sdw02 "( pg_ctl start -w -Z restoremode -D /usr/local/pgxl-9.5/data/coord_master.2 -o -i ) > /tmp/mdw_STDOUT_6318_16 2>&1" < /dev/null > /dev/null 2>&1
+Bring remote stdout: scp pgxl@sdw02:/tmp/mdw_STDOUT_6318_16 /tmp/STDOUT_6318_17 > /dev/null 2>&1
+LOG:  redirecting log output to logging collector process
+HINT:  Future log output will appear in directory "pg_log".
+SET
+SET
+SET
+psql:/tmp/GENERAL_6318_15:14: ERROR:  role "pgxl" already exists
+ALTER ROLE
+REVOKE
+REVOKE
+GRANT
+GRANT
+CREATE NODE
+You are now connected to database "postgres" as user "pgxl".
+SET
+SET
+SET
+SET
+SET
+SET
+SET
+SET
+COMMENT
+CREATE EXTENSION
+COMMENT
+REVOKE
+REVOKE
+GRANT
+GRANT
+You are now connected to database "template1" as user "pgxl".
+SET
+SET
+SET
+SET
+SET
+SET
+SET
+SET
+COMMENT
+CREATE EXTENSION
+COMMENT
+REVOKE
+REVOKE
+GRANT
+GRANT
+Actual Command: ssh pgxl@sdw02 "( pg_ctl stop -w -Z restoremode -D /usr/local/pgxl-9.5/data/coord_master.2 ) > /tmp/mdw_STDOUT_6318_18 2>&1" < /dev/null > /dev/null 2>&1
+Bring remote stdout: scp pgxl@sdw02:/tmp/mdw_STDOUT_6318_18 /tmp/STDOUT_6318_19 > /dev/null 2>&1
+Starting coordinator master coord2
+LOG:  redirecting log output to logging collector process
+HINT:  Future log output will appear in directory "pg_log".
+Done.
+CREATE NODE
+ pgxc_pool_reload 
+------------------
+ t
+(1 row)
+
+ALTER NODE
+ pgxc_pool_reload 
+------------------
+ t
+(1 row)
+
+PGXC monitor all //查看pgxc集群状态
+Running: gtm master
+Running: coordinator master coord1
+Running: coordinator master coord2
+
+
+4、新建datanode master dn1 节点
+
+PGXC add datanode master dn1 sdw02 5434 30013 /usr/local/pgxl-9.5/data/dn_master none none none   //指定datanode节点名、端口号、数据目录、
+Actual Command: ssh pgxl@sdw02 "( PGXC_CTL_SILENT=1 initdb -D /usr/local/pgxl-9.5/data/dn_master   --nodename dn1 ) > /tmp/mdw_STDOUT_6318_22 2>&1" < /dev/null > /dev/null 2>&1
+Bring remote stdout: scp pgxl@sdw02:/tmp/mdw_STDOUT_6318_22 /tmp/STDOUT_6318_23 > /dev/null 2>&1
+The files belonging to this database system will be owned by user "pgxl".
+This user must also own the server process.
+
+The database cluster will be initialized with locale "en_US.UTF-8".
+The default database encoding has accordingly been set to "UTF8".
+The default text search configuration will be set to "english".
+
+Data page checksums are disabled.
+
+creating directory /usr/local/pgxl-9.5/data/dn_master ... ok
+creating subdirectories ... ok
+selecting default max_connections ... 100
+selecting default shared_buffers ... 128MB
+selecting dynamic shared memory implementation ... posix
+creating configuration files ... ok
+creating template1 database in /usr/local/pgxl-9.5/data/dn_master/base/1 ... ok
+initializing pg_authid ... ok
+initializing dependencies ... ok
+creating system views ... ok
+creating cluster information ... ok
+loading system objects' descriptions ... ok
+creating collations ... ok
+creating conversions ... ok
+creating dictionaries ... ok
+setting privileges on built-in objects ... ok
+creating information schema ... ok
+loading PL/pgSQL server-side language ... ok
+vacuuming database template1 ... ok
+copying template1 to template0 ... ok
+copying template1 to postgres ... ok
+syncing data to disk ... ok
+freezing database template0 ... ok
+freezing database template1 ... ok
+freezing database postgres ... ok
+
+WARNING: enabling "trust" authentication for local connections
+You can change this by editing pg_hba.conf or using the option -A, or
+--auth-local and --auth-host, the next time you run initdb.
+
+Success.
+INFO:  please do not close this session until you are done adding the new node
+ pgxc_lock_for_backup 
+----------------------
+ t
+(1 row)
+
+Actual Command: ssh pgxl@sdw02 "( pg_ctl start -w -Z restoremode -D /usr/local/pgxl-9.5/data/dn_master -o -i ) > /tmp/mdw_STDOUT_6318_25 2>&1" < /dev/null > /dev/null 2>&1
+Bring remote stdout: scp pgxl@sdw02:/tmp/mdw_STDOUT_6318_25 /tmp/STDOUT_6318_26 > /dev/null 2>&1
+LOG:  redirecting log output to logging collector process
+HINT:  Future log output will appear in directory "pg_log".
+SET
+SET
+SET
+psql:/tmp/GENERAL_6318_24:14: ERROR:  role "pgxl" already exists
+ALTER ROLE
+REVOKE
+REVOKE
+GRANT
+GRANT
+CREATE NODE
+CREATE NODE
+You are now connected to database "postgres" as user "pgxl".
+SET
+SET
+SET
+SET
+SET
+SET
+SET
+SET
+COMMENT
+CREATE EXTENSION
+COMMENT
+REVOKE
+REVOKE
+GRANT
+GRANT
+You are now connected to database "template1" as user "pgxl".
+SET
+SET
+SET
+SET
+SET
+SET
+SET
+SET
+COMMENT
+CREATE EXTENSION
+COMMENT
+REVOKE
+REVOKE
+GRANT
+GRANT
+Actual Command: ssh pgxl@sdw02 "( pg_ctl stop -w -Z restoremode -D /usr/local/pgxl-9.5/data/dn_master ) > /tmp/mdw_STDOUT_6318_27 2>&1" < /dev/null > /dev/null 2>&1
+Bring remote stdout: scp pgxl@sdw02:/tmp/mdw_STDOUT_6318_27 /tmp/STDOUT_6318_28 > /dev/null 2>&1
+Starting datanode master dn1.
+LOG:  redirecting log output to logging collector process
+HINT:  Future log output will appear in directory "pg_log".
+Done.
+CREATE NODE
+ pgxc_pool_reload 
+------------------
+ t
+(1 row)
+
+CREATE NODE
+ pgxc_pool_reload 
+------------------
+ t
+(1 row)
+
+EXECUTE DIRECT
+ pgxc_pool_reload 
+------------------
+ t
+(1 row)
+
+5、新建datanode master dn1 节点
+
+PGXC add datanode master dn2 sdw03 5435 30014 /usr/local/pgxl-9.5/data/dn_master2 none none none
+
+Actual Command: ssh pgxl@sdw03 "( PGXC_CTL_SILENT=1 initdb -D /usr/local/pgxl-9.5/data/dn_master2   --nodename dn2 ) > /tmp/mdw_STDOUT_6318_31 2>&1" < /dev/null > /dev/null 2>&1
+Bring remote stdout: scp pgxl@sdw03:/tmp/mdw_STDOUT_6318_31 /tmp/STDOUT_6318_32 > /dev/null 2>&1
+The files belonging to this database system will be owned by user "pgxl".
+This user must also own the server process.
+
+The database cluster will be initialized with locale "en_US.UTF-8".
+The default database encoding has accordingly been set to "UTF8".
+The default text search configuration will be set to "english".
+
+Data page checksums are disabled.
+
+creating directory /usr/local/pgxl-9.5/data/dn_master2 ... ok
+creating subdirectories ... ok
+selecting default max_connections ... 100
+selecting default shared_buffers ... 128MB
+selecting dynamic shared memory implementation ... posix
+creating configuration files ... ok
+creating template1 database in /usr/local/pgxl-9.5/data/dn_master2/base/1 ... ok
+initializing pg_authid ... ok
+initializing dependencies ... ok
+creating system views ... ok
+creating cluster information ... ok
+loading system objects' descriptions ... ok
+creating collations ... ok
+creating conversions ... ok
+creating dictionaries ... ok
+setting privileges on built-in objects ... ok
+creating information schema ... ok
+loading PL/pgSQL server-side language ... ok
+vacuuming database template1 ... ok
+copying template1 to template0 ... ok
+copying template1 to postgres ... ok
+syncing data to disk ... ok
+freezing database template0 ... ok
+freezing database template1 ... ok
+freezing database postgres ... ok
+
+WARNING: enabling "trust" authentication for local connections
+You can change this by editing pg_hba.conf or using the option -A, or
+--auth-local and --auth-host, the next time you run initdb.
+
+Success.
+ERROR: could not open file 10.0.0.0/24 for read, No such file or directory //由于之默认使用datanodePgHbaEntries这个定义,忽略这个错误
+INFO:  please do not close this session until you are done adding the new node
+ pgxc_lock_for_backup 
+----------------------
+ t
+(1 row)
+
+Actual Command: ssh pgxl@sdw03 "( pg_ctl start -w -Z restoremode -D /usr/local/pgxl-9.5/data/dn_master2 -o -i ) > /tmp/mdw_STDOUT_6318_34 2>&1" < /dev/null > /dev/null 2>&1
+Bring remote stdout: scp pgxl@sdw03:/tmp/mdw_STDOUT_6318_34 /tmp/STDOUT_6318_35 > /dev/null 2>&1
+LOG:  redirecting log output to logging collector process
+HINT:  Future log output will appear in directory "pg_log".
+SET
+SET
+SET
+psql:/tmp/GENERAL_6318_33:14: ERROR:  role "pgxl" already exists
+ALTER ROLE
+REVOKE
+REVOKE
+GRANT
+GRANT
+CREATE NODE
+CREATE NODE
+CREATE NODE
+You are now connected to database "postgres" as user "pgxl".
+SET
+SET
+SET
+SET
+SET
+SET
+SET
+SET
+COMMENT
+CREATE EXTENSION
+COMMENT
+REVOKE
+REVOKE
+GRANT
+GRANT
+You are now connected to database "template1" as user "pgxl".
+SET
+SET
+SET
+SET
+SET
+SET
+SET
+SET
+COMMENT
+CREATE EXTENSION
+COMMENT
+REVOKE
+REVOKE
+GRANT
+GRANT
+Actual Command: ssh pgxl@sdw03 "( pg_ctl stop -w -Z restoremode -D /usr/local/pgxl-9.5/data/dn_master2 ) > /tmp/mdw_STDOUT_6318_36 2>&1" < /dev/null > /dev/null 2>&1
+Bring remote stdout: scp pgxl@sdw03:/tmp/mdw_STDOUT_6318_36 /tmp/STDOUT_6318_37 > /dev/null 2>&1
+Starting datanode master dn2.
+LOG:  redirecting log output to logging collector process
+HINT:  Future log output will appear in directory "pg_log".
+Done.
+CREATE NODE
+ pgxc_pool_reload 
+------------------
+ t
+(1 row)
+
+CREATE NODE
+ pgxc_pool_reload 
+------------------
+ t
+(1 row)
+
+EXECUTE DIRECT
+ pgxc_pool_reload 
+------------------
+ t
+(1 row)
+
+EXECUTE DIRECT
+ pgxc_pool_reload 
+------------------
+ t
+(1 row)
+
+
+6、查看集群状态
+
+PGXC monitor all
+Running: gtm master
+Running: coordinator master coord1
+Running: coordinator master coord2
+Running: datanode master dn1
+Running: datanode master dn2
+PGXC quit
+[pgxl@mdw ~]$ pgxc_ctl 
+
+
+
+
+六、从任意一节点Coord节点连接测试
+
+[pgxl@sdw01 data]$ psql postgres
+psql (PGXL 9.5r1.5, based on PG 9.5.6 (Postgres-XL 9.5r1.5))
+Type "help" for help.
+
+postgres=# create database test;
+CREATE DATABASE
+postgres=# \c test
+You are now connected to database "test" as user "pgxl".
+test=# SELECT * FROM pgxc_node;
+ node_name | node_type | node_port | node_host | nodeis_primary | nodeis_preferred |   node_id   
+-----------+-----------+-----------+-----------+----------------+------------------+-------------
+ coord1    | C         |      5432 | sdw01     | f              | f                |  1885696643
+ coord2    | C         |      5433 | sdw02     | f              | f                | -1197102633
+ dn1       | D         |      5434 | sdw02     | f              | f                |  -560021589
+ dn2       | D         |      5435 | sdw03     | f              | f                |   352366662
+(4 rows)
+
+test=# \q
+[pgxl@sdw01 data]$ psql postgres
+psql (PGXL 9.5r1.5, based on PG 9.5.6 (Postgres-XL 9.5r1.5))
+Type "help" for help.
+
+postgres=# \c test
+You are now connected to database "test" as user "pgxl".
+test=#  CREATE TABLE disttab(col1 int, col2 int, col3 text) DISTRIBUTE BY HASH(col1);
+CREATE TABLE
+test=# CREATE TABLE repltab (col1 int, col2 int) DISTRIBUTE BY
+test-# REPLICATION;
+CREATE TABLE
+test=#  INSERT INTO disttab SELECT generate_series(1,10000), generate_series(101, 20000), 'foo';
+INSERT 0 1990000
+test=#  INSERT INTO repltab SELECT generate_series(1,100), generate_series(101, 200);
+INSERT 0 100
+test=# SELECT count(*) FROM disttab;
+  count  
+---------
+ 1990000
+(1 row)
+
+test=# SELECT xc_node_id, count(*) FROM disttab GROUP BY xc_node_id;
+ xc_node_id |  count  
+------------+---------
+ -560021589 | 1002761
+  352366662 |  987239
+(2 rows)
+
+test=# \q

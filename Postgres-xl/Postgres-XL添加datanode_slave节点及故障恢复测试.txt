@@ -1,0 +1,138 @@
+一、添加datanode slave节点
+
+[pgxl@mdw pgxc_ctl]$ pgxc_ctl 
+/bin/bash
+Installing pgxc_ctl_bash script as /home/pgxl/pgxc_ctl/pgxc_ctl_bash.
+Installing pgxc_ctl_bash script as /home/pgxl/pgxc_ctl/pgxc_ctl_bash.
+Reading configuration using /home/pgxl/pgxc_ctl/pgxc_ctl_bash --home /home/pgxl/pgxc_ctl --configuration /home/pgxl/pgxc_ctl/pgxc_ctl.conf
+Finished reading configuration.
+   ******** PGXC_CTL START ***************
+
+Current directory: /home/pgxl/pgxc_ctl
+PGXC  
+PGXC 
+
+PGXC add datanode slave dn1 mdw 6432 40001 /usr/local/pgxl-9.5/data/dn_slave.1 none /usr/local/pgxl-9.5/data/datanode_archlog.1   //指定dn1 slave执备节点。
+
+Actual Command: ssh pgxl@mdw "( mkdir -p /usr/local/pgxl-9.5/data/dn_slave.1;chmod 0700 /usr/local/pgxl-9.5/data/dn_slave.1 ) > /tmp/mdw_STDOUT_16768_9 2>&1" < /dev/null > /dev/null 2>&1
+Bring remote stdout: scp pgxl@mdw:/tmp/mdw_STDOUT_16768_9 /tmp/STDOUT_16768_10 > /dev/null 2>&1
+Actual Command: ssh pgxl@mdw "( rm -rf /usr/local/pgxl-9.5/data/datanode_archlog.1; mkdir -p /usr/local/pgxl-9.5/data/datanode_archlog.1;chmod 0700 /usr/local/pgxl-9.5/data/datanode_archlog.1 ) > /tmp/mdw_STDOUT_16768_11 2>&1" < /dev/null > /dev/null 2>&1
+Bring remote stdout: scp pgxl@mdw:/tmp/mdw_STDOUT_16768_11 /tmp/STDOUT_16768_12 > /dev/null 2>&1
+Actual Command: ssh pgxl@mdw "( rm -rf none; mkdir -p none;chmod 0700 none ) > /tmp/mdw_STDOUT_16768_13 2>&1" < /dev/null > /dev/null 2>&1
+Bring remote stdout: scp pgxl@mdw:/tmp/mdw_STDOUT_16768_13 /tmp/STDOUT_16768_14 > /dev/null 2>&1
+Actual Command: ssh pgxl@sdw02 "( pg_ctl stop -w -Z datanode -D /usr/local/pgxl-9.5/data/dn_master -m fast ) > /tmp/mdw_STDOUT_16768_15 2>&1" < /dev/null > /dev/null 2>&1
+Bring remote stdout: scp pgxl@sdw02:/tmp/mdw_STDOUT_16768_15 /tmp/STDOUT_16768_16 > /dev/null 2>&1
+Actual Command: ssh pgxl@sdw02 "( pg_ctl start -w -Z datanode -D /usr/local/pgxl-9.5/data/dn_master ) > /tmp/mdw_STDOUT_16768_17 2>&1" < /dev/null > /dev/null 2>&1
+Bring remote stdout: scp pgxl@sdw02:/tmp/mdw_STDOUT_16768_17 /tmp/STDOUT_16768_18 > /dev/null 2>&1
+LOG:  redirecting log output to logging collector process
+HINT:  Future log output will appear in directory "pg_log".
+Actual Command: ssh pgxl@mdw "( pg_basebackup -p 5434 -h sdw02 -D /usr/local/pgxl-9.5/data/dn_slave.1 -x   ) > /tmp/mdw_STDOUT_16768_19 2>&1" < /dev/null > /dev/null 2>&1
+Bring remote stdout: scp pgxl@mdw:/tmp/mdw_STDOUT_16768_19 /tmp/STDOUT_16768_20 > /dev/null 2>&1
+Actual Command: ssh pgxl@mdw "( pg_ctl start -w -Z datanode -D /usr/local/pgxl-9.5/data/dn_slave.1 ) > /tmp/mdw_STDOUT_16768_21 2>&1" < /dev/null > /dev/null 2>&1
+Bring remote stdout: scp pgxl@mdw:/tmp/mdw_STDOUT_16768_21 /tmp/STDOUT_16768_22 > /dev/null 2>&1
+LOG:  redirecting log output to logging collector process
+HINT:  Future log output will appear in directory "pg_log".
+
+PGXC monitor all
+Running: gtm master
+Running: coordinator master coord1
+Running: coordinator master coord2
+Running: datanode master dn1
+Running: datanode slave dn1
+Running: datanode master dn2
+PGXC 
+
+test=# select * from pgxc_node;   //查看pgxc节点情况
+ node_name | node_type | node_port | node_host | nodeis_primary | nodeis_preferred |   node_id   
+-----------+-----------+-----------+-----------+----------------+------------------+-------------
+ coord1    | C         |      5432 | sdw01     | f              | f                |  1885696643
+ coord2    | C         |      5433 | sdw02     | f              | f                | -1197102633
+ dn1       | D         |      5434 | sdw02     | f              | f                |  -560021589
+ dn2       | D         |      5435 | sdw03     | f              | f                |   352366662
+(4 rows)
+
+test=#  EXECUTE DIRECT ON(dn1) 'SELECT client_hostname, state, sync_state FROM pg_stat_replication';  //查看dn1是否开同步发状态
+ client_hostname |   state   | sync_state 
+-----------------+-----------+------------
+                 | streaming | sync
+(1 row)
+
+
+
+
+
+
+[pgxl@mdw pgxc_ctl]$ pgxc_ctl 
+/bin/bash
+Installing pgxc_ctl_bash script as /home/pgxl/pgxc_ctl/pgxc_ctl_bash.
+Installing pgxc_ctl_bash script as /home/pgxl/pgxc_ctl/pgxc_ctl_bash.
+Reading configuration using /home/pgxl/pgxc_ctl/pgxc_ctl_bash --home /home/pgxl/pgxc_ctl --configuration /home/pgxl/pgxc_ctl/pgxc_ctl.conf
+Finished reading configuration.
+   ******** PGXC_CTL START ***************
+
+Current directory: /home/pgxl/pgxc_ctl
+PGXC  stop -m immediate datanode master dn1  //停止dn1主节点
+Stopping datanode master dn1.
+Done.
+PGXC failover datanode dn1    //切换dn1 slave节点为主节点
+Failover specified datanodes.
+Failover the datanode dn1.
+Failover datanode dn1 using GTM itself
+Actual Command: ssh pgxl@mdw "( pg_ctl promote -Z datanode -D /usr/local/pgxl-9.5/data/dn_slave.1 ) > /tmp/mdw_STDOUT_18097_2 2>&1" < /dev/null > /dev/null 2>&1
+Bring remote stdout: scp pgxl@mdw:/tmp/mdw_STDOUT_18097_2 /tmp/STDOUT_18097_3 > /dev/null 2>&1
+Actual Command: ssh pgxl@mdw "( pg_ctl restart -w -Z datanode -D /usr/local/pgxl-9.5/data/dn_slave.1 -o -i; sleep 1 ) > /tmp/mdw_STDOUT_18097_4 2>&1" < /dev/null > /dev/null 2>&1
+Bring remote stdout: scp pgxl@mdw:/tmp/mdw_STDOUT_18097_4 /tmp/STDOUT_18097_5 > /dev/null 2>&1
+LOG:  redirecting log output to logging collector process
+HINT:  Future log output will appear in directory "pg_log".
+ALTER NODE
+ pgxc_pool_reload 
+------------------
+ t
+(1 row)
+
+EXECUTE DIRECT
+ pgxc_pool_reload 
+------------------
+ t
+(1 row)
+
+EXECUTE DIRECT
+ pgxc_pool_reload 
+------------------
+ t
+(1 row)
+
+ALTER NODE
+ pgxc_pool_reload 
+------------------
+ t
+(1 row)
+
+Done.
+PGXC 
+
+
+
+
+test=# SELECT xc_node_id, count(*) FROM disttab GROUP BY xc_node_id;  //要看查询是否正常
+ xc_node_id | count  
+------------+--------
+ -560021589 | 237465
+  352366662 | 234534
+(2 rows)
+
+test=# SELECT oid, * FROM pgxc_node;   //查看dn1节点已经在原来的备节点上了
+  oid  | node_name | node_type | node_port | node_host | nodeis_primary | nodeis_preferred |   node_id   
+-------+-----------+-----------+-----------+-----------+----------------+------------------+-------------
+ 11819 | coord1    | C         |      5432 | sdw01     | f              | f                |  1885696643
+ 16384 | coord2    | C         |      5433 | sdw02     | f              | f                | -1197102633
+ 16386 | dn2       | D         |      5435 | sdw03     | f              | f                |   352366662
+ 16385 | dn1       | D         |      6432 | mdw       | f              | f                |  -560021589
+(4 rows)
+
+test=# 
+
+
+
+
+

@@ -1,0 +1,689 @@
+http://files.postgres-xl.org/documentation/tutorial-createcluster.html
+
+
+http://files.postgres-xl.org/documentation/pgxc-ctl.html
+
+
+添加一数据节点
+
+[pgxl@mdw pgxc_ctl]$ pgxc_ctl 
+/bin/bash
+Installing pgxc_ctl_bash script as /home/pgxl/pgxc_ctl/pgxc_ctl_bash.
+Installing pgxc_ctl_bash script as /home/pgxl/pgxc_ctl/pgxc_ctl_bash.
+Reading configuration using /home/pgxl/pgxc_ctl/pgxc_ctl_bash --home /home/pgxl/pgxc_ctl --configuration /home/pgxl/pgxc_ctl/pgxc_ctl.conf
+Finished reading configuration.
+   ******** PGXC_CTL START ***************
+
+Current directory: /home/pgxl/pgxc_ctl
+PGXC monitor all
+
+Running: gtm master
+Running: coordinator master coord1
+Running: coordinator master coord2
+Running: datanode master dn1
+Running: datanode master dn2
+PGXC add datanode master dn3 mdw 5436 30015 /usr/local/pgxl-9.5/data/dn_master2 none none  none  //添加数据节点 指定那访问控制文件
+Actual Command: ssh pgxl@mdw "( PGXC_CTL_SILENT=1 initdb -D /usr/local/pgxl-9.5/data/dn_master2   --nodename dn3 ) > /tmp/mdw_STDOUT_16667_0 2>&1" < /dev/null > /dev/null 2>&1
+Bring remote stdout: scp pgxl@mdw:/tmp/mdw_STDOUT_16667_0 /tmp/STDOUT_16667_1 > /dev/null 2>&1
+The files belonging to this database system will be owned by user "pgxl".
+This user must also own the server process.
+
+The database cluster will be initialized with locale "en_US.UTF-8".
+The default database encoding has accordingly been set to "UTF8".
+The default text search configuration will be set to "english".
+
+Data page checksums are disabled.
+
+creating directory /usr/local/pgxl-9.5/data/dn_master2 ... ok
+creating subdirectories ... ok
+selecting default max_connections ... 100
+selecting default shared_buffers ... 128MB
+selecting dynamic shared memory implementation ... posix
+creating configuration files ... ok
+creating template1 database in /usr/local/pgxl-9.5/data/dn_master2/base/1 ... ok
+initializing pg_authid ... ok
+initializing dependencies ... ok
+creating system views ... ok
+creating cluster information ... ok
+loading system objects' descriptions ... ok
+creating collations ... ok
+creating conversions ... ok
+creating dictionaries ... ok
+setting privileges on built-in objects ... ok
+creating information schema ... ok
+loading PL/pgSQL server-side language ... ok
+vacuuming database template1 ... ok
+copying template1 to template0 ... ok
+copying template1 to postgres ... ok
+syncing data to disk ... ok
+freezing database template0 ... ok
+freezing database template1 ... ok
+freezing database postgres ... ok
+
+WARNING: enabling "trust" authentication for local connections
+You can change this by editing pg_hba.conf or using the option -A, or
+--auth-local and --auth-host, the next time you run initdb.
+
+Success.
+INFO:  please do not close this session until you are done adding the new node
+ pgxc_lock_for_backup 
+----------------------
+ t
+(1 row)
+
+Actual Command: ssh pgxl@mdw "( pg_ctl start -w -Z restoremode -D /usr/local/pgxl-9.5/data/dn_master2 -o -i ) > /tmp/mdw_STDOUT_16667_3 2>&1" < /dev/null > /dev/null 2>&1
+Bring remote stdout: scp pgxl@mdw:/tmp/mdw_STDOUT_16667_3 /tmp/STDOUT_16667_4 > /dev/null 2>&1
+LOG:  redirecting log output to logging collector process
+HINT:  Future log output will appear in directory "pg_log".
+SET
+SET
+SET
+psql:/tmp/GENERAL_16667_2:14: ERROR:  role "pgxl" already exists
+ALTER ROLE
+REVOKE
+REVOKE
+GRANT
+GRANT
+CREATE DATABASE
+CREATE NODE
+CREATE NODE
+CREATE NODE
+CREATE NODE
+You are now connected to database "postgres" as user "pgxl".
+SET
+SET
+SET
+SET
+SET
+SET
+SET
+SET
+COMMENT
+CREATE EXTENSION
+COMMENT
+REVOKE
+REVOKE
+GRANT
+GRANT
+You are now connected to database "template1" as user "pgxl".
+SET
+SET
+SET
+SET
+SET
+SET
+SET
+SET
+COMMENT
+CREATE EXTENSION
+COMMENT
+REVOKE
+REVOKE
+GRANT
+GRANT
+You are now connected to database "test" as user "pgxl".
+SET
+SET
+SET
+SET
+SET
+SET
+SET
+SET
+CREATE EXTENSION
+COMMENT
+SET
+SET
+SET
+CREATE TABLE
+ALTER TABLE
+CREATE TABLE
+ALTER TABLE
+REVOKE
+REVOKE
+GRANT
+GRANT
+Actual Command: ssh pgxl@mdw "( pg_ctl stop -w -Z restoremode -D /usr/local/pgxl-9.5/data/dn_master2 ) > /tmp/mdw_STDOUT_16667_5 2>&1" < /dev/null > /dev/null 2>&1
+Bring remote stdout: scp pgxl@mdw:/tmp/mdw_STDOUT_16667_5 /tmp/STDOUT_16667_6 > /dev/null 2>&1
+Starting datanode master dn3.
+LOG:  redirecting log output to logging collector process
+HINT:  Future log output will appear in directory "pg_log".
+Done.
+CREATE NODE
+ pgxc_pool_reload 
+------------------
+ t
+(1 row)
+
+CREATE NODE
+ pgxc_pool_reload 
+------------------
+ t
+(1 row)
+
+EXECUTE DIRECT
+ pgxc_pool_reload 
+------------------
+ t
+(1 row)
+
+EXECUTE DIRECT
+ pgxc_pool_reload 
+------------------
+ t
+(1 row)
+
+EXECUTE DIRECT
+ pgxc_pool_reload 
+------------------
+ t
+(1 row)
+
+PGXC monitor all
+Running: gtm master
+Running: coordinator master coord1
+Running: coordinator master coord2
+Running: datanode master dn1
+Running: datanode master dn2
+Running: datanode master dn3
+PGXC 
+
+
+
+
+二、对将表重新分配到新节点
+
+
+test=# SELECT xc_node_id, count(*) FROM disttab GROUP BY xc_node_id;
+ xc_node_id |  count  
+------------+---------
+ -560021589 | 8053359
+  352366662 | 8062641
+(2 rows)
+
+test=# SELECT * FROM pgxc_node;
+ node_name | node_type | node_port | node_host | nodeis_primary | nodeis_preferred |   node_id   
+-----------+-----------+-----------+-----------+----------------+------------------+-------------
+ coord1    | C         |      5432 | sdw01     | f              | f                |  1885696643
+ coord2    | C         |      5433 | sdw02     | f              | f                | -1197102633
+ dn1       | D         |      5434 | sdw02     | f              | f                |  -560021589
+ dn2       | D         |      5435 | sdw03     | f              | f                |   352366662
+ dn3       | D         |      5436 | mdw       | f              | f                |  -700122826
+(5 rows)
+
+test=# ALTER TABLE disttab ADD NODE (dn3);
+ALTER TABLE
+test=# SELECT xc_node_id, count(*) FROM disttab GROUP BY xc_node_id;
+ xc_node_id |  count  
+------------+---------
+ -700122826 | 5370933
+  352366662 | 5408475
+ -560021589 | 5336592
+(3 rows)
+
+test=# 
+
+
+
+
+三、添加第三个coordinator节点
+
+
+#----End of reconfiguration -------------------------
+[pgxl@mdw pgxc_ctl]$ pgxc_ctl
+/bin/bash
+Installing pgxc_ctl_bash script as /home/pgxl/pgxc_ctl/pgxc_ctl_bash.
+Installing pgxc_ctl_bash script as /home/pgxl/pgxc_ctl/pgxc_ctl_bash.
+Reading configuration using /home/pgxl/pgxc_ctl/pgxc_ctl_bash --home /home/pgxl/pgxc_ctl --configuration /home/pgxl/pgxc_ctl/pgxc_ctl.conf
+Finished reading configuration.
+   ******** PGXC_CTL START ***************
+
+Current directory: /home/pgxl/pgxc_ctl
+PGXC monitor all
+Running: gtm master
+Running: coordinator master coord1
+Running: coordinator master coord2
+Running: datanode master dn1
+Running: datanode master dn2
+Running: datanode master dn3
+PGXC 
+PGXC add coordinator master coord3 sdw03 5437 30016  /usr/local/pgxl-9.5/data/coord_master.3 none none  //第三个coordinator节点
+Actual Command: ssh pgxl@sdw03 "( PGXC_CTL_SILENT=1 initdb -D /usr/local/pgxl-9.5/data/coord_master.3 --nodename coord3 ) > /tmp/mdw_STDOUT_6119_0 2>&1" < /dev/null > /dev/null 2>&1
+Bring remote stdout: scp pgxl@sdw03:/tmp/mdw_STDOUT_6119_0 /tmp/STDOUT_6119_1 > /dev/null 2>&1
+The files belonging to this database system will be owned by user "pgxl".
+This user must also own the server process.
+
+The database cluster will be initialized with locale "en_US.UTF-8".
+The default database encoding has accordingly been set to "UTF8".
+The default text search configuration will be set to "english".
+
+Data page checksums are disabled.
+
+creating directory /usr/local/pgxl-9.5/data/coord_master.3 ... ok
+creating subdirectories ... ok
+selecting default max_connections ... 100
+selecting default shared_buffers ... 128MB
+selecting dynamic shared memory implementation ... posix
+creating configuration files ... ok
+creating template1 database in /usr/local/pgxl-9.5/data/coord_master.3/base/1 ... ok
+initializing pg_authid ... ok
+initializing dependencies ... ok
+creating system views ... ok
+creating cluster information ... ok
+loading system objects' descriptions ... ok
+creating collations ... ok
+creating conversions ... ok
+creating dictionaries ... ok
+setting privileges on built-in objects ... ok
+creating information schema ... ok
+loading PL/pgSQL server-side language ... ok
+vacuuming database template1 ... ok
+copying template1 to template0 ... ok
+copying template1 to postgres ... ok
+syncing data to disk ... ok
+freezing database template0 ... ok
+freezing database template1 ... ok
+freezing database postgres ... ok
+
+WARNING: enabling "trust" authentication for local connections
+You can change this by editing pg_hba.conf or using the option -A, or
+--auth-local and --auth-host, the next time you run initdb.
+
+Success.
+INFO:  please do not close this session until you are done adding the new node
+ pgxc_lock_for_backup 
+----------------------
+ t
+(1 row)
+
+Actual Command: ssh pgxl@sdw03 "( pg_ctl start -w -Z restoremode -D /usr/local/pgxl-9.5/data/coord_master.3 -o -i ) > /tmp/mdw_STDOUT_6119_3 2>&1" < /dev/null > /dev/null 2>&1
+Bring remote stdout: scp pgxl@sdw03:/tmp/mdw_STDOUT_6119_3 /tmp/STDOUT_6119_4 > /dev/null 2>&1
+LOG:  redirecting log output to logging collector process
+HINT:  Future log output will appear in directory "pg_log".
+SET
+SET
+SET
+psql:/tmp/GENERAL_6119_2:14: ERROR:  role "pgxl" already exists
+ALTER ROLE
+REVOKE
+REVOKE
+GRANT
+GRANT
+CREATE DATABASE
+CREATE NODE
+CREATE NODE
+CREATE NODE
+CREATE NODE
+CREATE NODE
+You are now connected to database "postgres" as user "pgxl".
+SET
+SET
+SET
+SET
+SET
+SET
+SET
+SET
+COMMENT
+CREATE EXTENSION
+COMMENT
+REVOKE
+REVOKE
+GRANT
+GRANT
+You are now connected to database "template1" as user "pgxl".
+SET
+SET
+SET
+SET
+SET
+SET
+SET
+SET
+COMMENT
+CREATE EXTENSION
+COMMENT
+REVOKE
+REVOKE
+GRANT
+GRANT
+You are now connected to database "test" as user "pgxl".
+SET
+SET
+SET
+SET
+SET
+SET
+SET
+SET
+CREATE EXTENSION
+COMMENT
+SET
+SET
+SET
+CREATE TABLE
+ALTER TABLE
+CREATE TABLE
+ALTER TABLE
+CREATE SEQUENCE
+ALTER TABLE
+ALTER SEQUENCE
+CREATE TABLE
+ALTER TABLE
+CREATE SEQUENCE
+ALTER TABLE
+ALTER SEQUENCE
+CREATE TABLE
+ALTER TABLE
+CREATE TABLE
+ALTER TABLE
+CREATE SEQUENCE
+ALTER TABLE
+ALTER SEQUENCE
+CREATE TABLE
+ALTER TABLE
+ALTER TABLE
+ALTER TABLE
+ALTER TABLE
+ALTER TABLE
+ALTER TABLE
+ALTER TABLE
+ALTER TABLE
+CREATE INDEX
+ALTER TABLE
+REVOKE
+REVOKE
+GRANT
+GRANT
+Actual Command: ssh pgxl@sdw03 "( pg_ctl stop -w -Z restoremode -D /usr/local/pgxl-9.5/data/coord_master.3 ) > /tmp/mdw_STDOUT_6119_5 2>&1" < /dev/null > /dev/null 2>&1
+Bring remote stdout: scp pgxl@sdw03:/tmp/mdw_STDOUT_6119_5 /tmp/STDOUT_6119_6 > /dev/null 2>&1
+Starting coordinator master coord3
+LOG:  redirecting log output to logging collector process
+HINT:  Future log output will appear in directory "pg_log".
+Done.
+CREATE NODE
+ pgxc_pool_reload 
+------------------
+ t
+(1 row)
+
+CREATE NODE
+ pgxc_pool_reload 
+------------------
+ t
+(1 row)
+
+EXECUTE DIRECT
+ pgxc_pool_reload 
+------------------
+ t
+(1 row)
+
+EXECUTE DIRECT
+ pgxc_pool_reload 
+------------------
+ t
+(1 row)
+
+EXECUTE DIRECT
+ pgxc_pool_reload 
+------------------
+ t
+(1 row)
+
+ALTER NODE
+ pgxc_pool_reload 
+------------------
+ t
+(1 row)
+
+
+PGXC monitor all
+Running: gtm master
+Running: coordinator master coord1
+Running: coordinator master coord2
+Running: coordinator master coord3
+Running: datanode master dn1
+Running: datanode master dn2
+Running: datanode master dn3
+PGXC 
+
+
+四、重新分配数据表。。
+
+
+test=# select count(*) from disttab;
+  count   
+----------
+ 16428000
+(1 row)
+
+test=# SELECT xc_node_id, count(*) FROM disttab GROUP BY xc_node_id;
+ xc_node_id |  count  
+------------+---------
+ -700122826 | 5478651
+  352366662 | 5513073
+ -560021589 | 5436276
+(3 rows)
+
+test=# ALTER TABLE disttab DELETE NODE (dn1);
+ALTER TABLE
+
+[pgxl@sdw01 ~]$ psql -d test
+psql (PGXL 9.5r1.5, based on PG 9.5.6 (Postgres-XL 9.5r1.5))
+Type "help" for help.
+
+test=# SELECT xc_node_id, count(*) FROM disttab GROUP BY xc_node_id;
+ xc_node_id |  count  
+------------+---------
+  352366662 | 8210451
+ -700122826 | 8217549
+(2 rows)
+
+test=# SELECT  count(*) FROM disttab;
+  count   
+----------
+ 16428000
+(1 row)
+
+test=# 
+
+
+
+test=# ALTER TABLE disttab ADD NODE (dn1);
+ALTER TABLE
+test=# SELECT xc_node_id, count(*) FROM disttab GROUP BY xc_node_id;
+ xc_node_id |  count  
+------------+---------
+ -700122826 | 5478651
+  352366662 | 5513073
+ -560021589 | 5436276
+(3 rows)
+
+test=# SELECT xc_node_id, count(*) FROM disttab GROUP BY xc_node_id;
+ xc_node_id |  count  
+------------+---------
+ -700122826 | 5478651
+  352366662 | 5513073
+ -560021589 | 5436276
+
+
+
+五、将表原来是复制分布的改成HASH分配
+
+
+test=#   SELECT xc_node_id, count(*) FROM repltab GROUP BY xc_node_id;
+ xc_node_id | count 
+------------+-------
+ -560021589 |   100
+(1 row)
+
+test=#   SELECT  count(*) FROM repltab limit 100;
+ count 
+-------
+   100
+(1 row)
+
+test=# ALTER TABLE repltab DISTRIBUTE BY HASH(col1);
+ALTER TABLE
+test=#   SELECT xc_node_id, count(*) FROM repltab GROUP BY xc_node_id;
+ xc_node_id | count 
+------------+-------
+ -560021589 |    42
+  352366662 |    58
+(2 rows)
+
+test=#   SELECT  count(*) FROM repltab limit 100;
+ count 
+-------
+   100
+(1 row)
+
+test=# 
+
+
+六、删除新添加的coord3
+
+
+[pgxl@mdw ~]$  pgxc_ctl
+/bin/bash
+Installing pgxc_ctl_bash script as /home/pgxl/pgxc_ctl/pgxc_ctl_bash.
+Installing pgxc_ctl_bash script as /home/pgxl/pgxc_ctl/pgxc_ctl_bash.
+Reading configuration using /home/pgxl/pgxc_ctl/pgxc_ctl_bash --home /home/pgxl/pgxc_ctl --configuration /home/pgxl/pgxc_ctl/pgxc_ctl.conf
+Finished reading configuration.
+   ******** PGXC_CTL START ***************
+
+Current directory: /home/pgxl/pgxc_ctl
+PGXC remove coordinator master coord3 clean
+DROP NODE
+ pgxc_pool_reload 
+------------------
+ t
+(1 row)
+
+DROP NODE
+ pgxc_pool_reload 
+------------------
+ t
+(1 row)
+
+EXECUTE DIRECT
+ pgxc_pool_reload 
+------------------
+ t
+(1 row)
+
+EXECUTE DIRECT
+ pgxc_pool_reload 
+------------------
+ t
+(1 row)
+
+EXECUTE DIRECT
+ pgxc_pool_reload 
+------------------
+ t
+(1 row)
+
+Stopping coordinator master coord3.
+Done.
+Actual Command: ssh pgxl@sdw03 "( rm -rf /usr/local/pgxl-9.5/data/coord_master.3 ) > /tmp/mdw_STDOUT_9422_2 2>&1" < /dev/null > /dev/null 2>&1
+Bring remote stdout: scp pgxl@sdw03:/tmp/mdw_STDOUT_9422_2 /tmp/STDOUT_9422_3 > /dev/null 2>&1
+PGXC 
+
+
+
+
+七、删除数据节点DN3 注意删除数据节点前,请查核实是该节点是否数据库,删除节点不能提示是否有数据库
+
+
+test=# SELECT oid, * FROM pgxc_node; 
+  oid  | node_name | node_type | node_port | node_host | nodeis_primary | nodeis_preferred |   node_id   
+-------+-----------+-----------+-----------+-----------+----------------+------------------+-------------
+ 16384 | coord1    | C         |      5432 | sdw01     | f              | f                |  1885696643
+ 11819 | coord2    | C         |      5433 | sdw02     | f              | f                | -1197102633
+ 16385 | dn1       | D         |      5434 | sdw02     | f              | f                |  -560021589
+ 16386 | dn2       | D         |      5435 | sdw03     | f              | f                |   352366662
+ 16400 | dn3       | D         |      5436 | mdw       | f              | f                |  -700122826
+(5 rows)
+
+test=# SELECT * FROM pgxc_class WHERE nodeoids::integer[] @> ARRAY[16400];   
+ pcrelid | pclocatortype | pcattnum | pchashalgorithm | pchashbuckets |     nodeoids      
+---------+---------------+----------+-----------------+---------------+-------------------
+   16403 | H             |        1 |               1 |          4096 | 16385 16386 16400
+   16417 | H             |        1 |               1 |          4096 | 16385 16386 16400
+   16430 | H             |        1 |               1 |          4096 | 16385 16386 16400
+   16436 | H             |        2 |               1 |          4096 | 16385 16386 16400
+   16388 | H             |        1 |               1 |          4096 | 16385 16386 16400
+(5 rows)
+
+test=# 
+
+
+test=# ALTER TABLE disttab DELETE NODE (dn3);
+ALTER TABLE
+test=# SELECT * FROM pgxc_class WHERE nodeoids::integer[] @> ARRAY[16400];
+ pcrelid | pclocatortype | pcattnum | pchashalgorithm | pchashbuckets |     nodeoids      
+---------+---------------+----------+-----------------+---------------+-------------------
+   16403 | H             |        1 |               1 |          4096 | 16385 16386 16400
+   16417 | H             |        1 |               1 |          4096 | 16385 16386 16400
+   16430 | H             |        1 |               1 |          4096 | 16385 16386 16400
+   16436 | H             |        2 |               1 |          4096 | 16385 16386 16400
+(4 rows)
+ 
+           
+
+ 需要过段时间，由于我的是虚拟机的关系，，具体的情况不明白   
+
+
+postgres=# SELECT * FROM pgxc_class WHERE nodeoids::integer[] @> ARRAY[16400];
+ pcrelid | pclocatortype | pcattnum | pchashalgorithm | pchashbuckets | nodeoids 
+---------+---------------+----------+-----------------+---------------+----------
+(0 rows)
+
+postgres=# SELECT * FROM pgxc_class WHERE nodeoids::integer[] @> ARRAY[16400];
+ pcrelid | pclocatortype | pcattnum | pchashalgorithm | pchashbuckets | nodeoids 
+---------+---------------+----------+-----------------+---------------+----------
+(0 rows)
+
+postgres=# 
+
+[pgxl@mdw pgxc_ctl]$ pgxc_ctl 
+/bin/bash
+Installing pgxc_ctl_bash script as /home/pgxl/pgxc_ctl/pgxc_ctl_bash.
+Installing pgxc_ctl_bash script as /home/pgxl/pgxc_ctl/pgxc_ctl_bash.
+Reading configuration using /home/pgxl/pgxc_ctl/pgxc_ctl_bash --home /home/pgxl/pgxc_ctl --configuration /home/pgxl/pgxc_ctl/pgxc_ctl.conf
+Finished reading configuration.
+   ******** PGXC_CTL START ***************
+
+Current directory: /home/pgxl/pgxc_ctl
+PGXC remove datanode master dn3 clean;
+DROP NODE
+ pgxc_pool_reload 
+------------------
+ t
+(1 row)
+
+DROP NODE
+ pgxc_pool_reload 
+------------------
+ t
+(1 row)
+
+EXECUTE DIRECT
+ pgxc_pool_reload 
+------------------
+ t
+(1 row)
+
+EXECUTE DIRECT
+ pgxc_pool_reload 
+------------------
+ t
+(1 row)
+
+Stopping datanode master dn3.
+Done.
+PGXC 
+
+

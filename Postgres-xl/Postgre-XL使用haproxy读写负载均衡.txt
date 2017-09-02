@@ -1,0 +1,95 @@
+一、安装haproxy
+
+#yum install gcc gcc-c++ make
+#groupadd haproxy
+#useradd haproxy –g haproxy -s /sbin/nologin
+#wget http://www.haproxy.org/download/1.6/src/haproxy-1.6.4.tar.gz
+#cd haproxy-1.6.4
+#make TARGET=linux2628 PREFIX=/usr/local/haproxy
+#make install PREFIX=/usr/local/haproxy
+#mkdir -p /etc/haproxy/
+#cp examples/haproxy.init /etc/init.d/haproxy
+#chmod +x /etc/init.d/haproxy
+#ln -s /usr/local/haproxy/sbin/haproxy /usr/sbin/
+
+
+
+二、主要配置文件haproxy.cfg
+
+[root@db2-node01 ~]# more /etc/haproxy/haproxy.cfg
+# This is a test configuration.
+# It requires a mysql server running on local port 5432
+
+global
+       log 127.0.0.1   local0
+       log 127.0.0.1   local1 notice
+	maxconn		500
+
+         
+
+defaults
+        log global
+        retries 3        
+
+         timeout queue           10s
+         timeout connect         10s
+         timeout client          10s
+         timeout server          10s
+         timeout http-keep-alive 10s
+         timeout check 5s
+
+        option redispatch
+
+listen stats
+	bind :8080
+	mode http
+	stats enable
+	stats uri /stats
+
+listen  postgresql_1
+        bind :15432  //对外访问端口
+        mode tcp     //负载协议
+        balance leastconn  //负载模式
+        option pgsql-check user pgxl  //这节点状态检查
+        server  srv2 10.0.0.2:5432 check port 5432 inter 1000 fall 3    //这后台节点为postgre-xl coornd节点
+       server  srv3 10.0.0.3:5433 check port 5433 inter 1000 fall 3     //这后台节点为postgre-xl coornd节点
+
+[root@db2-node01 ~]#  
+
+
+
+
+root@localhost ~]# vi /etc/rsyslog.d/haproxy.conf
+$ModLoad imudp
+$UDPServerRun 514
+local0.* /usr/local/haproxy/haproxy.log
+[root@localhost ~]# vi /etc/sysconfig/rsyslog
+SYSLOGD_OPTIONS="-c 2 -r -m 0"
+[root@localhost ~]# service rsyslog restart
+
+[root@localhost ~]# chkconfig haproxy on
+[root@localhost ~]# service haproxy start/stop/restart
+
+
+三、测试haproxy连接
+
+
+[root@db2 ~]# psql -h 108.88.3.106 -p15432 -U pgxl -d postgres
+psql (9.5.5, server 9.5.6 (Postgres-XL 9.5r1.5))
+Type "help" for help.
+
+postgres=# select * from pgxc_node;
+ node_name | node_type | node_port | node_host | nodeis_primary | nodeis_preferred |   node_id   
+-----------+-----------+-----------+-----------+----------------+------------------+-------------
+ dn1       | D         |      5434 | sdw02     | f              | f                |  -560021589
+ dn2       | D         |      5435 | sdw03     | f              | f                |   352366662
+ coord2    | C         |      5433 | sdw02     | f              | f                | -1197102633
+ dn3       | D         |      5436 | sdw01     | f              | f                |  -700122826
+ coord1    | C         |      5432 | sdw01     | f              | f                |  1885696643
+(5 rows)
+
+postgres=# 
+
+
+
+
