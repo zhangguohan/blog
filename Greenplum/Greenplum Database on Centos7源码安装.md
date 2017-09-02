@@ -1,8 +1,9 @@
 
-## Centos7.3.1611 --最小化安装##
+## Greenplum install On Centos 7 ##
 
+0、Centos7.3.1611 --最小化安装
 
-DB:GreenPlum 5.0.0
+   DB:GreenPlum 5.0.0
 
 
 注意事项：
@@ -75,43 +76,39 @@ DB:GreenPlum 5.0.0
    
 
 
-安装gpora优化器依懒包
-git clone https://github.com/greenplum-db/gp-xerces.git
-git clone https://github.com/greenplum-db/gporca.git
+    #安装gpora优化器依懒包
+    git clone https://github.com/greenplum-db/gp-xerces.git
+    git clone https://github.com/greenplum-db/gporca.git
  
-cd gp-xerces/
+    cd gp-xerces/
   
-mkdir build
-cd build
-../configure --prefix=/usr/
-   make
- make install
-  cd ../
- https://cmake.org/files/v3.8/cmake-3.8.0-rc2.tar.gz
- wget -c https://cmake.org/files/v3.8/cmake-3.8.0-rc2.tar.gz
-tar -zxvf cmake-3.8.0-rc2.tar.gz 
- cd cmake-3.8.0-rc2/
+    mkdir build
+    cd build
+    ../configure --prefix=/usr/
+    make
+    make install
+    cd ../
+    #安装cmake
+    https://cmake.org/files/v3.8/cmake-3.8.0-rc2.tar.gz
+    wget -c https://cmake.org/files/v3.8/cmake-3.8.0-rc2.tar.gz
+    tar -zxvf cmake-3.8.0-rc2.tar.gz 
+    cd cmake-3.8.0-rc2/ 
+    ./bootstrap && make && make install
 
- more README.rst 
-  ./bootstrap && make && make install
+    cd gporca/
 
-  cd gporca/
-
- cd /usr/local/src/gporca/
- mkdir build/
- cd build/
-history 
-cmake ../
-make
-make install
-ctest -j7
-
+    cd /usr/local/src/gporca/
+    mkdir build/
+    cd build/
+    history 
+    cmake ../
+    make
+    make install
+    ctest -j7
 
 
-
-
-[root@mdw ld.so.conf.d]# cd /etc/ld.so.conf.d/
-[root@mdw ld.so.conf.d]# echo "/usr/local/lib" >> usrlocallib.conf
+    [root@mdw ld.so.conf.d]# cd /etc/ld.so.conf.d/
+  [root@mdw ld.so.conf.d]# echo "/usr/local/lib" >> usrlocallib.conf
 
 
 
@@ -121,125 +118,92 @@ ctest -j7
 [root@mdw package]# more /etc/fstab 
 
 1、如果是使用XFS文件系统
-#
-# /etc/fstab
-# Created by anaconda on Mon Mar 27 08:34:13 2017
-#
-# Accessible filesystems, by reference, are maintained under '/dev/disk'
-# See man pages fstab(5), findfs(8), mount(8) and/or blkid(8) for more info
-#
-UUID=395ee60c-6201-4569-826d-3c0e3597a3f2 /                       xfs nodev,noatime,nobarrier,inode64,allocsize=16m 0 0
-UUID=92ad7aa5-17b7-40d6-87d8-72f954b5f702 /boot                   xfs     defaults        0 0
-UUID=a22e1a9f-eb3a-48ce-98a9-f65d9c412d43 swap                    swap    defaults        0 0
-[root@mdw package]#
+       
+        #
+        # /etc/fstab
+        # Created by anaconda on Mon Mar 27 08:34:13 2017
+        #
+        # Accessible filesystems, by reference, are maintained under '/dev/disk'
+        # See man pages fstab(5), findfs(8), mount(8) and/or blkid(8) for more info
+        #
+      UUID=395ee60c-6201-4569-826d-3c0e3597a3f2 /                       xfs nodev,noatime,nobarrier,inode64,allocsize=16m 0 0
+      UUID=92ad7aa5-17b7-40d6-87d8-72f954b5f702 /boot                   xfs     defaults        0 0
+      UUID=a22e1a9f-eb3a-48ce-98a9-f65d9c412d43 swap                    swap    defaults        0 0
+      [root@mdw package]#
+
+     Set the following parameters in the /etc/sysctl.conf file and reboot: 
+
+
+2、设制OS内核参数
+    
+    # For more information, see sysctl.conf(5) and sysctl.d(5).
+
+    kernel.shmmax = 500000000000
+    kernel.shmmni = 4096
+    kernel.shmall = 4000000000
+    kernel.sem = 250 512000 100 2048
+    kernel.sysrq = 1
+    kernel.core_uses_pid = 1
+    kernel.msgmnb = 65536
+    kernel.msgmax = 65536
+    kernel.msgmni = 2048
+    net.ipv4.tcp_syncookies = 1
+    net.ipv4.ip_forward = 0
+    net.ipv4.conf.default.accept_source_route = 0
+    net.ipv4.tcp_tw_recycle = 1
+    net.ipv4.tcp_max_syn_backlog = 4096
+    net.ipv4.conf.all.arp_filter = 1
+    net.ipv4.ip_local_port_range = 1025 65535
+    net.core.netdev_max_backlog = 10000
+    net.core.rmem_max = 2097152
+    net.core.wmem_max = 2097152
+    vm.overcommit_memory = 2
 
 
 
-Set the following parameters in the /etc/sysctl.conf file and reboot: 
+    Set the following parameters in the /etc/security/limits.conf file:
+
+     * soft nofile 65536
+     * hard nofile 65536
+     * soft nproc 131072
+     * hard nproc 131072
+
+     For RedHat Enterprise Linux 7.x and CentOS 7.x, parameter values in the /etc/security/limits.d/20-nproc.conf file override the values in the limits.conf
 
 
-# For more information, see sysctl.conf(5) and sysctl.d(5).
-
-kernel.shmmax = 500000000000
-kernel.shmmni = 4096
-kernel.shmall = 4000000000
-kernel.sem = 250 512000 100 2048
-kernel.sysrq = 1
-kernel.core_uses_pid = 1
-kernel.msgmnb = 65536
-kernel.msgmax = 65536
-kernel.msgmni = 2048
-net.ipv4.tcp_syncookies = 1
-net.ipv4.ip_forward = 0
-net.ipv4.conf.default.accept_source_route = 0
-net.ipv4.tcp_tw_recycle = 1
-net.ipv4.tcp_max_syn_backlog = 4096
-net.ipv4.conf.all.arp_filter = 1
-net.ipv4.ip_local_port_range = 1025 65535
-net.core.netdev_max_backlog = 10000
-net.core.rmem_max = 2097152
-net.core.wmem_max = 2097152
-vm.overcommit_memory = 2
+    以上在所有节点进行安装
 
 
 
-Set the following parameters in the /etc/security/limits.conf file:
+* **Git clone Greenplum 数据库源码包**
 
-* soft nofile 65536
-* hard nofile 65536
-* soft nproc 131072
-* hard nproc 131072
-
-
-
+    git clone    https://github.com/greenplum-db/gpdb.git 
+    cd gpdb/
+    ./configure --with-perl --with-python --with-libxml --enable-mapreduce --enable-orca --prefix=/usr/local/gpdb-5.0.0
+     make
+     make install
 
 
-For RedHat Enterprise Linux 7.x and CentOS 7.x, parameter values in the /etc/security/limits.d/20-nproc.conf file override the values in the limits.conf
+* **配置Greenplum数据库**
+
+     添加gpadmin用户及密码
+    [root@mdw ~]# useradd gpadmin
+    [root@mdw ~]# passwd gpadmin
 
 
-以上在所有节点进行安装
+    [root@mdw ~]# chown -R gpadmin:gpadmin /usr/local/gpdb-5.0.0/
+    [root@mdw ~]# cd /home/gpadmin/
+    [root@mdw gpadmin]# touch all_hosts
+    [root@mdw gpadmin]# vi /etc/hosts
 
+     [root@mdw gpadmin]# scp /etc/hosts sdw01:/etc/
+   
+     [root@mdw gpadmin]# scp /etc/hosts sdw02:/etc/
 
-
-
-
-   git clone    https://github.com/greenplum-db/gpdb.git 
-
-   cd gpdb/
-
- ./configure --with-perl --with-python --with-libxml --enable-mapreduce --enable-orca --prefix=/usr/local/gpdb-5.0.0
-   67  make
-   68  make install
-
-
-
-
-
-
-
-[root@mdw ~]# useradd gpadmin
-[root@mdw ~]# passwd gpadmin
-Changing password for user gpadmin.
-New password: 
-BAD PASSWORD: it is based on a dictionary word
-BAD PASSWORD: is too simple
-Retype new password: 
-passwd: all authentication tokens updated successfully.
-[root@mdw ~]# ll
-total 48
--rw-------. 1 root root  3957 Jan 20 20:53 anaconda-ks.cfg
--rw-r--r--. 1 root root 29028 Jan 20 20:52 install.log
--rw-r--r--. 1 root root  7502 Jan 20 20:48 install.log.syslog
-[root@mdw ~]# cd /usr/local/g
-games/      gpdb-5.0.0/ 
-[root@mdw ~]# cd /usr/local/g
-games/      gpdb-5.0.0/ 
-[root@mdw ~]# chown -R gpadmin:gpadmin /usr/local/gpdb-5.0.0/
-[root@mdw ~]# cd /home/gpadmin/
-[root@mdw gpadmin]# touch all_hosts
-[root@mdw gpadmin]# vi /etc/hosts
-
-[root@mdw gpadmin]# scp /etc/hosts sdw01:/etc/
-The authenticity of host 'sdw01 (10.218.86.93)' can't be established.
-RSA key fingerprint is 94:de:d9:0e:28:a9:79:e1:d6:5f:79:fc:f3:45:1a:93.
-Are you sure you want to continue connecting (yes/no)? yes
-Warning: Permanently added 'sdw01,10.218.86.93' (RSA) to the list of known hosts.
-Password: 
-hosts                                                                                                                            100%  214     0.2KB/s   00:00    
-[root@mdw gpadmin]# scp /etc/hosts sdw02:/etc/
-The authenticity of host 'sdw02 (10.218.62.69)' can't be established.
-RSA key fingerprint is a1:86:1c:44:92:c8:b2:cf:a0:80:f7:02:ec:84:55:51.
-Are you sure you want to continue connecting (yes/no)? yes
-Warning: Permanently added 'sdw02,10.218.62.69' (RSA) to the list of known hosts.
-Password: 
-hosts                                                                                                                            100%  214     0.2KB/s   00:00    
-[root@mdw gpadmin]
-
-
-[root@mdw gpadmin]# more /home/gpadmin/all_hosts 
-mdw
-sdw01
-sdw02
+     [root@mdw gpadmin]# more /home/gpadmin/all_hosts 
+     mdw
+     sdw01
+     sdw02
 
 
 打通root用户所有节点SSH免密码
