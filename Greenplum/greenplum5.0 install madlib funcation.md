@@ -140,8 +140,8 @@ tank=# \df madlib.chi2_gof_test
 ````
 
 ### 6、Create the sample table and data set as shown below:
-#### tank=# create table testing_madlib ( a bigint , b bigint );
 ````
+tank=# create table testing_madlib ( a bigint , b bigint );
 NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'a' as the Greenplum Database data distribution key for this table.
 HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 CREATE TABLE
