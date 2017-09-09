@@ -91,11 +91,11 @@ madpack.py : INFO : MADlib 1.12 installed successfully in MADLIB schema.
 
 
 
-###4、Verify the installation. 
+### 4、Verify the installation. 
 
 
 
-####[gpadmin@mdw tmp]$ $GPHOME/madlib/bin/madpack install-check -p greenplum -c gpadmin@mdw:5432/tank
+#### [gpadmin@mdw tmp]$ $GPHOME/madlib/bin/madpack install-check -p greenplum -c gpadmin@mdw:5432/tank
 ````
 madpack.py : INFO : Detected Greenplum DB version 4.3.
 TEST CASE RESULT|Module: array_ops|array_ops.sql_in|PASS|Time: 274 milliseconds
@@ -114,9 +114,9 @@ TEST CASE RESULT|Module: pca|pca.sql_in|PASS|Time: 23499 milliseconds
 TEST CASE RESULT|Module: validation|cross_validation.sql_in|PASS|Time: 1377 milliseconds
 ````
 
-###Connect to the database and check if the schema exists as shown here:
+### 5、Connect to the database and check if the schema exists as shown here:
 
-####[gpadmin@mdw tmp]$ psql -d tank
+#### [gpadmin@mdw tmp]$ psql -d tank
 ````
 psql (8.3.23)
 Type "help" for help.
@@ -139,8 +139,8 @@ tank=# \df madlib.chi2_gof_test
 
 ````
 
-###Create the sample table and data set as shown below:
-####tank=# create table testing_madlib ( a bigint , b bigint );
+### 6、Create the sample table and data set as shown below:
+#### tank=# create table testing_madlib ( a bigint , b bigint );
 ````
 NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'a' as the Greenplum Database data distribution key for this table.
 HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
