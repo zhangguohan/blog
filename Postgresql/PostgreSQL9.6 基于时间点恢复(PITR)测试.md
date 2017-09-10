@@ -1,8 +1,8 @@
-#PostgreSQL9.6 基于时间点恢复(PITR)测试
+# PostgreSQL9.6 基于时间点恢复(PITR)测试
 
 
 
-###一、新建归档目录及备份目录
+### 一、新建归档目录及备份目录
 ```
 [root@node01 ~]# mkdir /archivelog/
 [root@node01 ~]# chown postgres -R /archivelog/
@@ -11,7 +11,7 @@
 [root@node01 ~]# chown postgres  /home/postgres/backup
 
 ````
-###二、配置开启流复制备份
+### 二、配置开启流复制备份
 ````
 
 [postgres@node01 data]$ vi pg_hba.conf 
@@ -56,7 +56,7 @@ ghan=#
 ghan=# CREATE ROLE replication WITH REPLICATION PASSWORD '6220104' LOGIN;
 
 ``````
-###三、生成测试表
+### 三、生成测试表
 
 ````
 ghan=# create table t2_test(id int) tablespace tank;
@@ -77,7 +77,7 @@ ghan=# \! date
 ghan=# 
 
 `````
-###四、模拟生成基备份：
+### 四、模拟生成基备份：
 
 ```
 [postgres@node01 backup]$ pg_basebackup -D /home/postgres/backup -Ft -z -P -v -w -h localhost  -U replication 
@@ -89,7 +89,7 @@ pg_basebackup: base backup completed
 
 
 
-###五、增加测试数据库在不同时间点
+### 五、增加测试数据库在不同时间点
 
 ````
 ghan=# insert into t_test values(generate_series(1,7000));
@@ -117,11 +117,11 @@ ghan=# select count(*) from t_test;
 ghan=# 
 
 ````
-###六、停止数据库用
+### 六、停止数据库用
 
 ####/etc/init.d/pg9.6 stop
 
-###七、解压生成基于备份到指定目录指定时间点还原
+### 七、解压生成基于备份到指定目录指定时间点还原
 
 ````
 [postgres@node01 ~]  tar -zxvf 16397.tar.gz  -C backup/
@@ -136,7 +136,7 @@ restore_command = 'cp /archivelog/%f %p'		# e.g. 'cp /mnt/server/archivedir/%f %
 recovery_target_time = '2016-07-08 08:44:48'	# e.g. '2004-07-14 22:39:00 EST' 
 ````````
 
-###八、查看还原进度
+### 八、查看还原进度
 
 ````
 [postgres@node01 ~]$ pg_ctl -D backup start -l ok.log
@@ -154,7 +154,7 @@ LOG:  recovery has paused
 HINT:  Execute pg_xlog_replay_resume() to continue.
 `````
 
-###九、执行日志回滚查看还原结果
+### 九、执行日志回滚查看还原结果
 ````
 [postgres@node01 ~]$ psql  -d ghan
 psql (9.6beta2)
@@ -176,7 +176,7 @@ ghan=#
 
 `````
 
-###十、查看详细日志：
+### 十、查看详细日志：
 
 ````
 [postgres@node01 ~]$ more ok.log 
