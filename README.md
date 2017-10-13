@@ -9,3 +9,5 @@
 
 
 [2017-09-10_PostgreSQL9.6 基于时间点恢复](Postgresql/PostgreSQL9.6%20基于时间点恢复_PITR_测试.md)
+
+[2017-10-13_Postgresql如何使用oracle_fdw连接Oracle表](Postgresql/Postgresql如何使用oracle_fdw连接Oracle表.txt)
