@@ -11,3 +11,7 @@
 [2017-09-10_PostgreSQL9.6 基于时间点恢复](Postgresql/PostgreSQL9.6%20基于时间点恢复_PITR_测试.md)
 
 [2017-10-13_Postgresql如何使用oracle_fdw连接Oracle表](Postgresql/Postgresql如何使用oracle_fdw连接Oracle表.txt)
+
+[2017-10-13_Linux安装Oralce客户端](Postgresql/Linux安装Oralce客户端.txt)
+
+[2017-10-14_如何使用Ora2pg将Oracle数据迁移到Postgresql](Postgresql/如何使用Ora2pg将Oracle数据迁移到Postgresql.txt)
