@@ -1,0 +1,116 @@
+Linux系统需要连接其他电脑的数据库，并不需要安装几百M的客户端，只需要安装几十M的包即可。
+
+首先Oracle官网：
+
+ http://www.oracle.com/technetwork/database/features/instant-client/index-097480.html
+
+可根据实际需要下载各种操作系统的客户端（尤其注意32位、64位）。每种包又分.zip、.rpm两种格式包，zip包相当于解压后免安装版，rpm包需要安装版。
+
+
+
+1）rpm格式包安装配置
+
+1.1 下载以rpm后缀名的包，以11.2.0.4.0 版本为例，其中基础包basic、sql*plus、devel包建议默认下载，其他包视情况而定：
+
+oracle-instantclient11.2-basic-11.2.0.4.0-1.x86_64.rpm  --基础包，为了运行OCI、OCCI、JDBC-OCI 这几个应用程序；
+
+oracle-instantclient11.2-sqlplus-11.2.0.4.0-1.x86_64.rpm  --补充包/文件，是为了运行sql*plus的即时客户端；
+
+oracle-instantclient11.2-odbc-11.2.0.4.0-1.x86_64.rpm  --补充包/文件，为运行ODBC环境附加库；
+
+oracle-instantclient11.2-jdbc-11.2.0.4.0-1.x86_64.rpm  --补充JDBC下的XA、国际标准、行集操作；
+
+oracle-instantclient11.2-devel-11.2.0.4.0-1.x86_64.rpm  --包含头文件和示例文件，为开发Oracle应用程序的即时客户端；
+
+
+
+1.2 使用rpm -ivh [包名] 进行安装，
+
+如：rpm -ivh oracle-instantclient11.2-basic-11.2.0.4.0-1.x86_64.rpm 
+
+安装的文件默认放在两个位置：
+
+头文件：/usr/include/oracle/11.2/client64/ 下，如果在使用时报错找不到头文件，记得看路径是否是这个。
+
+包文件：/usr/lib/oracle/11.2/client64/ 下，包含{bin、lib}两个文件夹；
+
+
+
+1.3 创建文件夹： #mkdir -p /usr/lib/oracle/11.2/client64/network/admin/
+
+
+
+1.4 创建监听文件，并添加内容 #vim /usr/lib/oracle/11.2/client64/network/admin/tnsnames.ora
+
+ORCL =
+  (DESCRIPTION =
+    (ADDRESS = (PROTOCOL = TCP)(HOST = *IP*)(PORT = 1521))
+    (CONNECT_DATA =
+      (SERVER = DEDICATED)
+      (SERVICE_NAME = *SID*)
+    )
+  )
+
+
+
+1.5 配置环境变量 #vim  ~/.bashrc    --根目录下为全局使用，为限制用户权限，可只修改某一用户的环境变量
+
+export  ORACLE_HOME=/usr/lib/oracle/11.2/client64
+export  TNS_ADMIN=$ORACLE_HOME/network/admin
+export  NLS_LANG='simplified chinese_china'.ZHS16GBK
+export  LD_LIBRARY_PATH=$ORACLE_HOME/lib 
+export  PATH=$ORACLE_HOME/bin:$PATH
+
+
+
+1.6 使配置完的环境变量生效 #source ~/.bashrc
+
+
+
+1.7 连接数据库测试
+
+#sqlplus /nolog
+
+SQL>conn scott/tiger@orcl
+
+
+
+2）zip格式包安装配置（只以basic包做为示例）
+
+2.1 下载包：oracle-instantclient11.2-basic-11.2.0.1.0-1.x86_64.zip 
+
+2.2 将包文件解压到指定目录下：
+
+#unzip oracle-instantclient11.2-basic-11.2.0.1.0-1.x86_64.zip 
+
+解压后的文件存放路径可以自行设定，但是与后面环境变量设定有关，本文设定/home/orcl/ 下。
+
+头文件目录：/home/orcl/sdk/include/
+
+库文件目录：/home/orcl/instantclient_11_2/
+
+2.3 创建 network/admin/ 目录：mkdir -p /home/orcl/instantclient_11_2/network/admin/ 
+
+2.4 创建监听文件 tnsnames.ora
+
+#vim /home/orcl/instantclient_11_2/network/admin/tnsnames.ora
+
+ORCL =
+  (DESCRIPTION =
+    (ADDRESS = (PROTOCOL = TCP)(HOST = 192.168.232.131)(PORT = 1521))
+    (CONNECT_DATA =
+      (SERVER = DEDICATED)
+      (SERVICE_NAME = orcl)
+    )
+  )
+2.5 配置环境变量 #vim ~/.bashrc
+
+export ORACLE_HOME=/home/orcl/instantclient_11_2
+export TNS_ADMIN=$ORACLE_HOME/network/adminexport 
+export NLS_LANG='simplified chinese_china'.ZHS16GBKexport 
+export LD_LIBRARY_PATH=$ORACLE_HOME
+export PATH=$ORACLE_HOME:$PATH
+
+2.6 配置完成后，将环境变量生效 #source ~/.bashrc
+
+2.7 测试连接

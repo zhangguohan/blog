@@ -1,0 +1,151 @@
+
+一、设置Orcale客户端
+
+[root@pg01 oracle_fdw-1.5.0]# more  ~/.bashrc 
+# .bashrc
+
+# User specific aliases and functions
+
+alias rm='rm -i'
+alias cp='cp -i'
+alias mv='mv -i'
+
+# Source global definitions
+if [ -f /etc/bashrc ]; then
+	. /etc/bashrc
+fi
+
+export PGHOME=/usr/local/pg9.6
+
+export  ORACLE_HOME=/usr/lib/oracle/11.2/client64
+export  TNS_ADMIN=$ORACLE_HOME/network/admin
+export  NLS_LANG='simplified chinese_china'.ZHS16GBK
+export  LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$ORACLE_HOME/lib 
+export  PATH=$ORACLE_HOME/bin:$PGHOME/bin:$PATH
+
+
+[root@pg01]# source ~/.bashrc 
+
+[root@pg01~]# unzip oracle_fdw-1.5.0.zip
+
+
+[root@pg01 oracle_fdw-1.5.0]#   which pg_config
+/usr/local/pg9.6/bin/pg_config
+[root@pg01 oracle_fdw-1.5.0]# 
+
+[root@pg01 oracle_fdw-1.5.0]# make
+gcc -Wall -Wmissing-prototypes -Wpointer-arith -Wdeclaration-after-statement -Wendif-labels -Wmissing-format-attribute -Wformat-security -fno-strict-aliasing -fwrapv -O2 -fpic -I/usr/lib/oracle/11.2/client64/sdk/include -I/usr/lib/oracle/11.2/client64/oci/include -I/usr/lib/oracle/11.2/client64/rdbms/public -I/usr/include/oracle/12.1/client -I/usr/include/oracle/12.1/client64 -I/usr/include/oracle/11.2/client -I/usr/include/oracle/11.2/client64 -I/usr/include/oracle/11.1/client -I/usr/include/oracle/11.1/client64 -I/usr/include/oracle/10.2.0.5/client -I/usr/include/oracle/10.2.0.5/client64 -I/usr/include/oracle/10.2.0.4/client -I/usr/include/oracle/10.2.0.4/client64 -I/usr/include/oracle/10.2.0.3/client -I/usr/include/oracle/10.2.0.3/client64 -I. -I./ -I/usr/local/pg9.6/include/postgresql/server -I/usr/local/pg9.6/include/postgresql/internal -D_GNU_SOURCE   -c -o oracle_fdw.o oracle_fdw.c
+gcc -Wall -Wmissing-prototypes -Wpointer-arith -Wdeclaration-after-statement -Wendif-labels -Wmissing-format-attribute -Wformat-security -fno-strict-aliasing -fwrapv -O2 -fpic -I/usr/lib/oracle/11.2/client64/sdk/include -I/usr/lib/oracle/11.2/client64/oci/include -I/usr/lib/oracle/11.2/client64/rdbms/public -I/usr/include/oracle/12.1/client -I/usr/include/oracle/12.1/client64 -I/usr/include/oracle/11.2/client -I/usr/include/oracle/11.2/client64 -I/usr/include/oracle/11.1/client -I/usr/include/oracle/11.1/client64 -I/usr/include/oracle/10.2.0.5/client -I/usr/include/oracle/10.2.0.5/client64 -I/usr/include/oracle/10.2.0.4/client -I/usr/include/oracle/10.2.0.4/client64 -I/usr/include/oracle/10.2.0.3/client -I/usr/include/oracle/10.2.0.3/client64 -I. -I./ -I/usr/local/pg9.6/include/postgresql/server -I/usr/local/pg9.6/include/postgresql/internal -D_GNU_SOURCE   -c -o oracle_utils.o oracle_utils.c
+gcc -Wall -Wmissing-prototypes -Wpointer-arith -Wdeclaration-after-statement -Wendif-labels -Wmissing-format-attribute -Wformat-security -fno-strict-aliasing -fwrapv -O2 -fpic -I/usr/lib/oracle/11.2/client64/sdk/include -I/usr/lib/oracle/11.2/client64/oci/include -I/usr/lib/oracle/11.2/client64/rdbms/public -I/usr/include/oracle/12.1/client -I/usr/include/oracle/12.1/client64 -I/usr/include/oracle/11.2/client -I/usr/include/oracle/11.2/client64 -I/usr/include/oracle/11.1/client -I/usr/include/oracle/11.1/client64 -I/usr/include/oracle/10.2.0.5/client -I/usr/include/oracle/10.2.0.5/client64 -I/usr/include/oracle/10.2.0.4/client -I/usr/include/oracle/10.2.0.4/client64 -I/usr/include/oracle/10.2.0.3/client -I/usr/include/oracle/10.2.0.3/client64 -I. -I./ -I/usr/local/pg9.6/include/postgresql/server -I/usr/local/pg9.6/include/postgresql/internal -D_GNU_SOURCE   -c -o oracle_gis.o oracle_gis.c
+gcc -Wall -Wmissing-prototypes -Wpointer-arith -Wdeclaration-after-statement -Wendif-labels -Wmissing-format-attribute -Wformat-security -fno-strict-aliasing -fwrapv -O2 -fpic -shared -o oracle_fdw.so oracle_fdw.o oracle_utils.o oracle_gis.o -L/usr/local/pg9.6/lib -Wl,--as-needed -Wl,-rpath,'/usr/local/pg9.6/lib',--enable-new-dtags  -L/usr/lib/oracle/11.2/client64 -L/usr/lib/oracle/11.2/client64/bin -L/usr/lib/oracle/11.2/client64/lib -lclntsh -L/usr/lib/oracle/12.1/client/lib -L/usr/lib/oracle/12.1/client64/lib -L/usr/lib/oracle/11.2/client/lib -L/usr/lib/oracle/11.2/client64/lib -L/usr/lib/oracle/11.1/client/lib -L/usr/lib/oracle/11.1/client64/lib -L/usr/lib/oracle/10.2.0.5/client/lib -L/usr/lib/oracle/10.2.0.5/client64/lib -L/usr/lib/oracle/10.2.0.4/client/lib -L/usr/lib/oracle/10.2.0.4/client64/lib -L/usr/lib/oracle/10.2.0.3/client/lib -L/usr/lib/oracle/10.2.0.3/client64/lib 
+[root@pg01 oracle_fdw-1.5.0]# make install
+/bin/mkdir -p '/usr/local/pg9.6/lib/postgresql'
+/bin/mkdir -p '/usr/local/pg9.6/share/postgresql/extension'
+/bin/mkdir -p '/usr/local/pg9.6/share/postgresql/extension'
+/bin/mkdir -p '/usr/local/pg9.6/share/doc/postgresql/extension'
+/usr/bin/install -c -m 755  oracle_fdw.so '/usr/local/pg9.6/lib/postgresql/oracle_fdw.so'
+/usr/bin/install -c -m 644 .//oracle_fdw.control '/usr/local/pg9.6/share/postgresql/extension/'
+/usr/bin/install -c -m 644 .//oracle_fdw--1.1.sql .//oracle_fdw--1.0--1.1.sql  '/usr/local/pg9.6/share/postgresql/extension/'
+/usr/bin/install -c -m 644 .//README.oracle_fdw '/usr/local/pg9.6/share/doc/postgresql/extension/'
+
+
+postgres=# CREATE EXTENSION oracle_fdw;
+ERROR:  could not load library "/usr/local/pg9.6/lib/postgresql/oracle_fdw.so": libclntsh.so.11.1: cannot open shared object file: No such file or directory
+postgres=# 
+
+[root@pg01 ~]# more /etc/ld.so.conf.d/oracle.conf
+/usr/lib/oracle/11.2/client64/lib
+[root@pg01 ~]# ldconfig 
+[root@pg01 ~]# su - postgres
+
+postgres=# CREATE EXTENSION oracle_fdw;
+CREATE EXTENSION
+postgres=# 
+
+postgres=# CREATE SERVER oradb FOREIGN DATA WRAPPER oracle_fdw
+          OPTIONS (dbserver 'orcl');   
+CREATE SERVER
+postgres=# CREATE USER MAPPING FOR postgres SERVER oradb
+          OPTIONS (user 'zabbix', password 'zabbix'); 
+CREATE USER MAPPING
+  
+postgres=# CREATE FOREIGN TABLE oratab (
+          id        integer  options(key 'true') ,
+          name     varchar(30)
+       ) SERVER oradb OPTIONS (schema 'ZABBIX', table 'TEST');
+CREATE FOREIGN TABLE
+postgres=# select * from oratab;
+ id |  name  
+----+--------
+  2 | df
+  1 | 张国汉
+  3 | 张国汉
+(3 rows)
+
+postgres=# delete from oratab where id =2;
+DELETE 1
+postgres=#
+
+
+
+[postgres@pg01 ~]$ psql -d zabbix
+psql (9.6.1)
+Type "help" for help.
+
+zabbix=# CREATE EXTENSION oracle_fdw;
+CREATE EXTENSION
+zabbix=# CREATE SERVER oradb FOREIGN DATA WRAPPER oracle_fdw
+zabbix-#           OPTIONS (dbserver 'orcl'); 
+CREATE SERVER
+zabbix=# 
+zabbix=#  CREATE USER MAPPING FOR tank SERVER oradb
+zabbix-#           OPTIONS (user 'zabbix', password 'zabbix');
+CREATE USER MAPPING
+zabbix=# 
+zabbix=# GRANT USAGE ON FOREIGN SERVER oradb TO tank;
+GRANT
+zabbix=# CREATE FOREIGN TABLE oratab (
+zabbix(#           id        integer  options(key 'true') ,
+zabbix(#           name     varchar(30)
+zabbix(#        ) SERVER oradb OPTIONS (schema 'ZABBIX', table 'TEST');
+CREATE FOREIGN TABLE
+zabbix=# select * from oratab;
+ERROR:  user mapping not found for "postgres"
+zabbix=# \c + tank
+FATAL:  database "+" does not exist
+Previous connection kept
+zabbix=# \c - tank
+You are now connected to database "zabbix" as user "tank".
+zabbix=# CREATE FOREIGN TABLE oratab (
+zabbix(#           id        integer  options(key 'true') ,
+zabbix(#           name     varchar(30)
+zabbix(#        ) SERVER oradb OPTIONS (schema 'ZABBIX', table 'TEST');
+ERROR:  relation "oratab" already exists
+zabbix=# select * from oratab;
+ id |  name  
+----+--------
+  1 | 张国汉
+  3 | 张国汉
+(2 rows)
+
+zabbix=# 
+
+zabbix=# insert into oratab values(5,'sadf');
+INSERT 0 1
+zabbix=# select * from oratab;
+ id |  name  
+----+--------
+  1 | 张国汉
+  3 | 张国汉
+  5 | sadf
+(3 rows)
+
+zabbix=# insert into oratab values(5,'saddf');
+ERROR:  error executing query: OCIStmtExecute failed to execute remote query
+DETAIL:  ORA-00001: unique constraint (ZABBIX.TE_PK) violated
+zabbix=# 
+
+
+
+
+ 
