@@ -15,3 +15,5 @@
 [2017-10-13_Linux安装Oralce客户端](Postgresql/Linux安装Oralce客户端.txt)
 
 [2017-10-14_如何使用Ora2pg将Oracle数据迁移到Postgresql](Postgresql/如何使用Ora2pg将Oracle数据迁移到Postgresql.txt)
+
+[2017-10-23_DB2V9-客户端连接出错ERRORCODE=-4214的解决](DB2/2017-10-23_DB2V9-客户端连接出错ERRORCODE%3D-4214的解决.md)
