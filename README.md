@@ -17,3 +17,5 @@
 [2017-10-14_如何使用Ora2pg将Oracle数据迁移到Postgresql](Postgresql/如何使用Ora2pg将Oracle数据迁移到Postgresql.txt)
 
 [2017-10-23_DB2V9-客户端连接出错ERRORCODE=-4214的解决](DB2/2017-10-23_DB2V9-客户端连接出错ERRORCODE%3D-4214的解决.md)
+
+[2017-10-30_PostgreSQL-10_主从同步复制](Postgresql/2017-10-30_PostgreSQL-10_主从同步复制.md)
