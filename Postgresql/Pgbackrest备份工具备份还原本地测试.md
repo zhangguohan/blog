@@ -325,7 +325,7 @@ Last login: Thu Nov  2 23:10:41 CST 2017 on pts/0
 
 ### 八、还原到指定备份集时间段
 
-####8.1，现在再次执行操作删除表数据
+#### 8.1，现在再次执行操作删除表数据
 
 ````
  [postgres@test ~]$ psql -c "begin; \
@@ -342,7 +342,7 @@ LINE 1: select * from important_table
 [postgres@test ~]$ 
 ````
 
-####8.2、执行一次增量备份
+#### 8.2、执行一次增量备份
 
 ````
 [postgres@test ~]$  pgbackrest --stanza=demo--db-socket-path=/tmp  --type=incr backup
@@ -388,7 +388,7 @@ LOG:  database system was interrupted; last known up at 2017-11-03 07:13:50 CST
  STATEMENT:  select * from important_table
 ````
 
-####8.4、采用指定备份集还原、指定时间点
+#### 8.4、采用指定备份集还原、指定时间点
 ````
 
 [postgres@test ~]# /etc/init.d/pg10 stop
