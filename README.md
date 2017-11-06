@@ -19,3 +19,5 @@
 [2017-10-23_DB2V9-客户端连接出错ERRORCODE=-4214的解决](DB2/2017-10-23_DB2V9-客户端连接出错ERRORCODE%3D-4214的解决.md)
 
 [2017-10-30_PostgreSQL-10_主从同步复制](Postgresql/2017-10-30_PostgreSQL-10_主从同步复制.md)
+
+[2017-11-06_Pgbackrest备份工具备份还原本地测试](Postgresql/Pgbackrest备份工具备份还原本地测试.md)
