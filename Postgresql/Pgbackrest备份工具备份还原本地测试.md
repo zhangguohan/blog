@@ -132,11 +132,10 @@ host    replication     all             ::1/128                 trust
 ````
 
 #### 5.3生成备份
-
+````
 [root@mdw lib]# 
 # sudo -u postgres pgbackrest --stanza=demo --db-socket-path=/tmp --log-level-console=info backup 生成全备
 
-````
 2017-11-05 22:59:25.725 P01   INFO: backup file /usr/local/pg10/data/base/1/13054 (0B, 100%)
 2017-11-05 22:59:25.758 P01   INFO: backup file /usr/local/pg10/data/base/1/13049 (0B, 100%)
 2017-11-05 22:59:25.851 P00   INFO: full backup size = 22.5MB
