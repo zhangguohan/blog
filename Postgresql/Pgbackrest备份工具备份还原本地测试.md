@@ -180,7 +180,7 @@ ghan=#
 
 ```
 
-####5.6查看备份集
+#### 5.6查看备份集
 
 [root@mdw ~]# sudo -u postgres pgbackrest info
 ````
@@ -306,7 +306,7 @@ Last login: Thu Nov  2 23:07:11 CST 2017 on pts/0
 [postgres@test ~]$ pgbackrest --stanza=demo --db-socket-path=/tmp  --delta --type=time "--target=2017-11-02 23:05:00.009758+08" restore
 [postgres@test ~]$ cat /data/pgdata/recovery.conf 
 restore_command = '/usr/bin/pgbackrest--db-socket-path=/tmp  --stanza=demo archive-get %f "%p"'
-recovery_target_time = '2017-11-02 23:05:00.009758+08'
+recovery_target_time = '2017-11-02 23:05:00.009758+08'  //指定还原时间段
 [postgres@test ~]$ 
 
 [root@test ~]# /etc/init.d/pg10 start
@@ -367,8 +367,7 @@ Starting PostgreSQL: ok
 ERROR:  relation "important_table" does not exist
 LINE 1: select * from important_table
                       ^
-[postgres@test ~]$ 
-
+[postgres@test ~]$               //由于之前已经做了一次增量备份，而在指定还原时间段不在增量备份集中，故只能还原在最后一个备份集中。该表无法还原。
 
 
 LOG:  database system was interrupted; last known up at 2017-11-03 07:13:50 CST
@@ -428,17 +427,4 @@ LOG:  database system was interrupted; last known up at 2017-11-03 07:13:50 CST
  LOG:  database system is ready to accept connections
 [postgres@test ~]$ 
 
-``````
-
-
-
-
-
-
-
-
-
-
-
-
-
+````
