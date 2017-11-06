@@ -50,8 +50,10 @@ Commands:
 
 Use 'pgbackrest help [command]' for more information.
 [root@test ~]# 
+
 ````
 ### 三、配置/etc/pgbackrest.conf
+
 ````
 [demo]
 db-path=/usr/local/pg10/data
@@ -62,13 +64,12 @@ retention-full=2
 start-fast=y
 [root@mdw tmp]# 
 
-
 ```
 
-
-### 四、Postgresql数据库端修改置配如下：
+### 四、Postgresql数据库端修改置配如下
 
 #### 4.1 修改postgresql.conf
+
 ````
 [root@mdw data]# grep -Ev "^$|^[#;]" postgresql.conf
 
@@ -92,6 +93,7 @@ log_line_prefix = ''		# special values:
 
 
 #### 4.2 修改postgresql.conf
+
 ```
 [root@mdw data]# grep -Ev "^$|^[#;]" pg_hba.conf 
 local   all             all                                     trust
