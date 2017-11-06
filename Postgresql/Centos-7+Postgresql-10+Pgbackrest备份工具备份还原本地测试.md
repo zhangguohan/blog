@@ -242,7 +242,7 @@ Stopping PostgreSQL: ok
 7.5M	16734/
 [postgres@test base]$ rm -rf 16734/
 
-[postgres@test base]$ pgbackrest --stanza=demo --db-socket-path=/tmp  --delta    --db-include=test2 restore    //虽然只指向了test2数据库，默认会还原postgres\ template0  template1这3个系统库
+[postgres@test base]$ pgbackrest --stanza=demo  --delta    --db-include=test2 restore    //虽然只指向了test2数据库，默认会还原postgres\ template0  template1这3个系统库
 [postgres@test base]$ ll
 total 68
 drwx------ 2 postgres postgres  4096 Nov  1 22:27 1
@@ -303,9 +303,9 @@ psql: FATAL:  database "begin;        drop table important_table;        commit;
 Stopping PostgreSQL: ok
 [root@test ~]# su - postgres
 Last login: Thu Nov  2 23:07:11 CST 2017 on pts/0
-[postgres@test ~]$ pgbackrest --stanza=demo --db-socket-path=/tmp  --delta --type=time "--target=2017-11-02 23:05:00.009758+08" restore
+[postgres@test ~]$ pgbackrest --stanza=demo  --delta --type=time "--target=2017-11-02 23:05:00.009758+08" restore
 [postgres@test ~]$ cat /data/pgdata/recovery.conf 
-restore_command = '/usr/bin/pgbackrest--db-socket-path=/tmp  --stanza=demo archive-get %f "%p"'
+restore_command = '/usr/bin/pgbackrest --stanza=demo archive-get %f "%p"'
 recovery_target_time = '2017-11-02 23:05:00.009758+08'  //指定还原时间段
 [postgres@test ~]$ 
 
@@ -356,7 +356,7 @@ LINE 1: select * from important_table
 Stopping PostgreSQL: ok
 [root@test ~]# 
 
-[postgres@test ~]$ pgbackrest --stanza=demo --db-socket-path=/tmp --delta --type=time "--target=2017-11-02 23:05:00.009758+08" restore
+[postgres@test ~]$ pgbackrest --stanza=demo  --type=time "--target=2017-11-02 23:05:00.009758+08" restore
 
 [root@test ~]# /etc/init.d/pg10 start
 Starting PostgreSQL: ok
@@ -393,7 +393,7 @@ LOG:  database system was interrupted; last known up at 2017-11-03 07:13:50 CST
 
 [postgres@test ~]# /etc/init.d/pg10 stop
 
-[postgres@test ~]$  pgbackrest --stanza=demo --db-socket-path=/tmp  --delta  --type=time "--target=2017-11-02 23:05:00.009758+08" --set=20171102-144234F_20171102-230342D restore   //指定前一个备份集，时间点还原测试正常
+[postgres@test ~]$  pgbackrest --stanza=demo   --type=time "--target=2017-11-02 23:05:00.009758+08" --set=20171102-144234F_20171102-230342D restore   //指定前一个备份集，时间点还原测试正常
 
 
 [postgres@test ~]# /etc/init.d/pg10 start
