@@ -64,7 +64,7 @@ retention-full=2
 start-fast=y
 [root@mdw tmp]# 
 
-```
+````
 
 ### 四、Postgresql数据库端修改置配如下
 
@@ -94,7 +94,7 @@ log_line_prefix = ''		# special values:
 
 #### 4.2 修改postgresql.conf
 
-```
+````
 [root@mdw data]# grep -Ev "^$|^[#;]" pg_hba.conf 
 local   all             all                                     trust
 host    all             all             127.0.0.1/32            trust
@@ -107,13 +107,13 @@ host    replication     all             ::1/128                 trust
 [root@mdw data]# 
 
 
-```
+````
 
 
 
 ### 五、初始化pgbackrest环境配置
 #### 5.1生成stanza
-```
+````
 [root@mdw lib]# sudo -u postgres pgbackrest --stanza=demo --db-socket-path=/tmp  --log-level-console=info stanza-create
 2017-11-05 22:43:51.064 P00   INFO: stanza-create command begin 1.25: --db1-path=/usr/local/pg10/data --db1-socket-path=/tmp --log-level-console=info --repo-path=/var/lib/pgbackrest --stanza=demo
 2017-11-05 22:43:51.622 P00   INFO: stanza-create command end: completed successfully
