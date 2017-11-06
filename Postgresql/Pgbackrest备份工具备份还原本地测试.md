@@ -25,7 +25,7 @@
 
 
 
-###二、测试安装结果
+### 二、测试安装结果
 ````
 [root@test ~]# sudo -u postgres pgbackrest
 pgBackRest 1.25 - General help
@@ -67,9 +67,9 @@ start-fast=y
 
 
 ### 四、Postgresql数据库端修改置配如下：
-````
-#### 4.1 修改postgresql.conf
 
+#### 4.1 修改postgresql.conf
+````
 [root@mdw data]# grep -Ev "^$|^[#;]" postgresql.conf
 
 listen_addresses = '*'		# what IP address(es) to listen on;
@@ -87,12 +87,12 @@ max_wal_senders = 10
 
 log_line_prefix = ''		# special values:
 
-
+````
 
 
 
 #### 4.2 修改postgresql.conf
-
+```
 [root@mdw data]# grep -Ev "^$|^[#;]" pg_hba.conf 
 local   all             all                                     trust
 host    all             all             127.0.0.1/32            trust
