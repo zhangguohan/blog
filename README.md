@@ -20,4 +20,4 @@
 
 [2017-10-30_PostgreSQL-10_主从同步复制](Postgresql/2017-10-30_PostgreSQL-10_主从同步复制.md)
 
-[2017-11-06_Pgbackrest备份工具备份还原本地测试](Postgresql/Pgbackrest备份工具备份还原本地测试.md)
+[2017-11-06_Centos-7+Postgresql-10+Pgbackrest备份工具备份还原本地测试](Postgresql/Centos-7+Postgresql-10+Pgbackrest备份工具备份还原本地测试.md)
