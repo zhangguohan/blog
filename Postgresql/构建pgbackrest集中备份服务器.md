@@ -105,7 +105,7 @@ log-level-file=detail
 2017-11-10 03:30:01.791 P00   INFO: stanza-create command begin 1.25: --db1-host=db-primary --db1-path=/usr/local/pg10/data --db1-socket-path=/tmp --db1-user=postgres --log-level-console=info --repo-path=/var/lib/pgbackrest --stanza=demo
 2017-11-10 03:30:04.275 P00   INFO: stanza-create command end: completed successfully
 [root@sdw01 ~]#
-```  
+````  
 
 #### 1.10 备份节点检查stanza状态
 ````
