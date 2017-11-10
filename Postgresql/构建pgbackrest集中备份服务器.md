@@ -16,6 +16,7 @@
 
 #### 1.3 备机安装备份软件
 ```` 
+sudo wget -q -O -  https://github.com/pgbackrest/pgbackrest/archive/release/1.25.tar.gz   sudo tar zx -C /root
 
 cp -r /root/pgbackrest-release-1.25/lib/pgBackRest        /usr/share/perl5
 
