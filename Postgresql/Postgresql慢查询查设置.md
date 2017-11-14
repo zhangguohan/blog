@@ -1,4 +1,4 @@
-#Postgresql 设置慢查询
+# Postgresql 设置慢查询
 
 
 ### 修改postgresql.conf文件
@@ -58,3 +58,4 @@ log_line_prefix = 'time=%t:db=%d;user=%u;type=%i;'			# special values: //日志�
 					# -1 disables, 0 logs all temp files
 
 ````
+
