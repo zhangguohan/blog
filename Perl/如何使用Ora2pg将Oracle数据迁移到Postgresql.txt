@@ -1,0 +1,352 @@
+一、安装Perl模块 撒地方萨芬阿斯蒂芬萨芬撒地方撒地方撒旦范德萨撒旦
+
+[root@localhost ~]# yum -y install perl
+
+[root@localhost ~]# yum -y install perl-CPAN
+
+
+[root@pg01 ~]#  vi /usr/share/perl5/CPAN/Config.pm
+
+  'urllist' => [q[https://mirrors.aliyun.com/CPAN/]],
+
+[root@pg01 ~]# perl -MCPAN -e shell
+Terminal does not support AddHistory.
+
+cpan shell -- CPAN exploration and modules installation (v1.9402)
+Enter 'h' for help.
+
+cpan[1]> reload index
+CPAN: Storable loaded ok (v2.20)
+Going to read '/root/.cpan/Metadata'
+  Database was generated on Wed, 14 Jun 2017 16:54:01 GMT
+CPAN: LWP::UserAgent loaded ok (v5.833)
+CPAN: Time::HiRes loaded ok (v1.9721)
+Fetching with LWP:
+  https://mirrors.aliyun.com/CPAN/authors/01mailrc.txt.gz
+Going to read '/root/.cpan/sources/authors/01mailrc.txt.gz'
+............................................................................DONE
+Fetching with LWP:
+  https://mirrors.aliyun.com/CPAN/modules/02packages.details.txt.gz
+Going to read '/root/.cpan/sources/modules/02packages.details.txt.gz'
+  Database was generated on Fri, 16 Jun 2017 17:54:00 GMT
+.............
+  New CPAN.pm version (v2.16) available.
+  [Currently running version is v1.9402]
+  You might want to try
+    install CPAN
+    reload cpan
+  to both upgrade CPAN.pm and run the new version without leaving
+  the current session.
+
+
+...............................................................DONE
+Fetching with LWP:
+  https://mirrors.aliyun.com/CPAN/modules/03modlist.data.gz
+LWP failed with code[500] message[Connect failed: connect: 连接超时; 连接超时]
+
+Trying with "/usr/bin/curl -L -f -s -S --netrc-optional" to get
+    "https://mirrors.aliyun.com/CPAN/modules/03modlist.data.gz"
+Going to read '/root/.cpan/sources/modules/03modlist.data.gz'
+DONE
+Going to write /root/.cpan/Metadata
+
+cpan[2]> reload cpan
+(CPAN__unchanged__v1.9402)(CPAN::Author__unchanged__v5.5)(CPAN::CacheMgr__unchanged__v5.5)(CPAN::Complete__unchanged__v5.5)(CPAN::Debug__unchanged__v5.5)(CPAN::DeferredCode__unchanged__v5.50)(CPAN::Distribution__unchanged__v1.93)(CPAN::Distroprefs__unchanged__v6)(CPAN::Distrostatus__unchanged__v5.5)(CPAN::Exception::RecursiveDependency..v5.5)(CPAN::Exception::yaml_not_installed....v5.5)(CPAN::FTP__unchanged__v5.5001)(CPAN::FTP::netrc__unchanged__v1.00)(CPAN::HandleConfig__unchanged__v5.5)(CPAN::Index__unchanged__v1.93)(CPAN::InfoObj__unchanged__v5.5)(CPAN::LWP::UserAgent......v1.00)(CPAN::Module__unchanged__v5.5)(CPAN::Prompt__unchanged__v5.5)(CPAN::Queue__unchanged__v5.5)(CPAN::Shell__unchanged__v5.5)(CPAN::Tarzip__unchanged__v5.501)(CPAN::Version__unchanged__v5.5)
+12 subroutines redefined
+
+cpan[3]> 
+
+
+
+
+
+
+二、安装oracle配置客户端
+
+rpm -ivh oracle-instantclient11.2-basic-11.2.0.4.0-1.x86_64.rpm
+rpm -ivh oracle-instantclient11.2-devel-11.2.0.4.0-1.x86_64.rpm
+rpm -ivh oracle-instantclient11.2-jdbc-11.2.0.4.0-1.x86_64.rpm
+rpm -ivh oracle-instantclient11.2-sqlplus-11.2.0.4.0-1.x86_64.rpm
+
+[root@pg01 ora2pg]# more ~/.bashrc 
+# .bashrc
+
+# User specific aliases and functions
+
+alias rm='rm -i'
+alias cp='cp -i'
+alias mv='mv -i'
+
+# Source global definitions
+if [ -f /etc/bashrc ]; then
+	. /etc/bashrc
+fi
+
+export  ORACLE_HOME=/usr/lib/oracle/11.2/client64
+export  TNS_ADMIN=$ORACLE_HOME/network/admin
+export  NLS_LANG='simplified chinese_china'.ZHS16GBK
+export  LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$ORACLE_HOME/lib 
+export  PATH=$ORACLE_HOME/bin:$PATH
+
+[root@pg01 ora2pg]# 
+
+
+
+[root@pg01 ora2pg]# more /usr/lib/oracle/11.2/client64/network/admin/tnsnames.ora 
+ORCL =
+  (DESCRIPTION =
+    (ADDRESS = (PROTOCOL = TCP)(HOST = 108.88.3.126)(PORT = 1521))
+    (CONNECT_DATA =
+      (SERVER = DEDICATED)
+      (SERVICE_NAME = orcl)
+    )
+  )
+[root@pg01 ora2pg]# 
+
+
+
+#sqlplus /nolog
+
+SQL>conn scott/tiger@orcl
+
+
+
+三、安装ora2pg软件包
+
+
+
+#wget -c https://github.com/darold/ora2pg/archive/v18.1.tar.gz
+
+[root@pg01 ora2pg]# tar -zxvf v18.1.tar.gz 
+ora2pg-18.1/
+ora2pg-18.1/INSTALL
+ora2pg-18.1/LICENSE
+ora2pg-18.1/MANIFEST
+ora2pg-18.1/Makefile.PL
+ora2pg-18.1/README
+ora2pg-18.1/changelog
+ora2pg-18.1/doc/
+ora2pg-18.1/doc/Ora2Pg.pod
+ora2pg-18.1/doc/ora2pg.3
+ora2pg-18.1/lib/
+ora2pg-18.1/lib/Ora2Pg.pm
+ora2pg-18.1/lib/Ora2Pg/
+ora2pg-18.1/lib/Ora2Pg/GEOM.pm
+ora2pg-18.1/lib/Ora2Pg/MySQL.pm
+ora2pg-18.1/lib/Ora2Pg/PLSQL.pm
+ora2pg-18.1/packaging/
+ora2pg-18.1/packaging/README
+ora2pg-18.1/packaging/RPM/
+ora2pg-18.1/packaging/RPM/ora2pg.spec
+ora2pg-18.1/packaging/debian/
+ora2pg-18.1/packaging/debian/create-deb-tree.sh
+ora2pg-18.1/packaging/debian/ora2pg/
+ora2pg-18.1/packaging/debian/ora2pg/DEBIAN/
+ora2pg-18.1/packaging/debian/ora2pg/DEBIAN/control
+ora2pg-18.1/packaging/debian/ora2pg/DEBIAN/copyright
+ora2pg-18.1/packaging/slackbuild/
+ora2pg-18.1/packaging/slackbuild/Ora2Pg.SlackBuild
+ora2pg-18.1/packaging/slackbuild/Ora2Pg.info
+ora2pg-18.1/packaging/slackbuild/README
+ora2pg-18.1/packaging/slackbuild/doinst.sh
+ora2pg-18.1/packaging/slackbuild/slack-desc
+ora2pg-18.1/scripts/
+ora2pg-18.1/scripts/ora2pg
+ora2pg-18.1/scripts/ora2pg_scanner
+[root@pg01 ora2pg]# cd ora2pg-18.1/
+[root@pg01 ora2pg-18.1]# ll
+总用量 424
+-rw-rw-r-- 1 root root 193316 2月  17 18:03 changelog
+drwxrwxr-x 2 root root   4096 2月  17 18:03 doc
+-rw-rw-r-- 1 root root     21 2月  17 18:03 INSTALL
+drwxrwxr-x 3 root root   4096 2月  17 18:03 lib
+-rw-rw-r-- 1 root root  32472 2月  17 18:03 LICENSE
+-rw-rw-r-- 1 root root  52421 2月  17 18:03 Makefile.PL
+-rw-rw-r-- 1 root root    180 2月  17 18:03 MANIFEST
+drwxrwxr-x 5 root root   4096 2月  17 18:03 packaging
+-rw-rw-r-- 1 root root 124685 2月  17 18:03 README
+drwxrwxr-x 2 root root   4096 2月  17 18:03 scripts
+[root@pg01 ora2pg-18.1]# perl Makefile.PL 
+Checking if your kit is complete...
+Looks good
+Writing Makefile for Ora2Pg
+
+Done...
+------------------------------------------------------------------------------
+Please read documentation at http://ora2pg.darold.net/ before asking for help
+------------------------------------------------------------------------------
+Now type: make && make install
+[root@pg01 ora2pg-18.1]# make && make install
+cp lib/Ora2Pg.pm blib/lib/Ora2Pg.pm
+cp lib/Ora2Pg/GEOM.pm blib/lib/Ora2Pg/GEOM.pm
+cp lib/Ora2Pg/PLSQL.pm blib/lib/Ora2Pg/PLSQL.pm
+cp lib/Ora2Pg/MySQL.pm blib/lib/Ora2Pg/MySQL.pm
+cp scripts/ora2pg blib/script/ora2pg
+/usr/bin/perl -MExtUtils::MY -e 'MY->fixin(shift)' -- blib/script/ora2pg
+cp scripts/ora2pg_scanner blib/script/ora2pg_scanner
+/usr/bin/perl -MExtUtils::MY -e 'MY->fixin(shift)' -- blib/script/ora2pg_scanner
+Manifying blib/man3/ora2pg.3
+Installing /usr/local/share/perl5/Ora2Pg.pm
+Installing /usr/local/share/perl5/Ora2Pg/PLSQL.pm
+Installing /usr/local/share/perl5/Ora2Pg/MySQL.pm
+Installing /usr/local/share/perl5/Ora2Pg/GEOM.pm
+Installing /usr/local/share/man/man3/ora2pg.3
+Installing /usr/local/bin/ora2pg
+Installing /usr/local/bin/ora2pg_scanner
+Installing default configuration file (ora2pg.conf.dist) to /etc/ora2pg
+Appending installation info to /usr/lib64/perl5/perllocal.pod
+[root@pg01 ora2pg-18.1]# cd /usr/local/
+bin/       games/     lib/       libexec/   pg9.6/     pgsql/     share/     var/       
+etc/       include/   lib64/     msmtp/     pg9.6-bak/ sbin/      src/       
+[root@pg01 ora2pg-18.1]# 
+
+
+
+
+
+四、安装DB2::Oracle模块
+
+perl -MCPAN -e 'install DBD::Oracle'
+
+
+
+五、配置ora2pg.conf文件
+
+
+[root@pg01 dump]# cd /etc/ora2pg/
+[root@pg01 ora2pg]# ll
+总用量 128
+-rw-r--r-- 1 root root 47957 6月  17 10:46 ora2pg.conf.dist
+
+[root@pg01 ora2pg]# cp ora2pg.conf.dist  ora2pg.conf
+
+[root@pg01 ora2pg]# vi ora2pg.conf
+
+
+ORACLE_DSN      dbi:Oracle:host=108.88.3.247;sid=ORCL
+ORACLE_USER     pwms2
+ORACLE_PWD      pwms2
+
+# Oracle schema/owner to use
+SCHEMA          PWMS2
+
+TYPE     TABLE  PACKAGE COPY VIEW GRANT SEQUENCE TRIGGER FUNCTION PROCEDURE TABLESPACE TYPE PARTITION
+
+
+# If deferring foreign keys is not possible du to the amount of data in a
+# single transaction, you've not exported foreign keys as deferrable or you
+# are using direct import to PostgreSQL, you can use the DROP_FKEY directive.
+# It will drop all foreign keys before all data import and recreate them at
+# the end of the import.
+DROP_FKEY       1
+
+
+OUTPUT          outputSCTTT.sql
+
+# Base directory where all dumped files must be written
+#OUTPUT_DIR     /var/tmp
+
+
+
+DEFAULT_NUMERIC float   # 将oracle中NUMERIC转换成float
+
+
+
+
+六、导出oracle数据库
+
+[root@pg01 ~]# mkdir dump
+[root@pg01 ~]# cd dump/
+[root@pg01 dump]# ll
+总用量 0
+[root@pg01 dump]# ora2pg
+Can't set DBI::db=HASH(0x33cf4a0)->{AutoInactiveDestroy}: unrecognised attribute name or invalid value at /usr/lib64/perl5/DBI.pm line 708.
+Can't get DBI::db=HASH(0x33cf4a0)->{AutoInactiveDestroy}: unrecognised attribute name at /usr/lib64/perl5/DBI.pm line 708.
+[========================>] 259/259 tables (100.0%) end of scanning.                         
+[>                        ]   0/259 tables (0.0%) end of scanning.                          
+[========================>] 259/259 tables (100.0%) end of table export.                
+[========================>] 0/0 packages (100.0%) end of output.        
+Can't set DBI::db=HASH(0x3e3de48)->{AutoInactiveDestroy}: unrecognised attribute name or invalid value at /usr/lib64/perl5/DBI.pm line 708.
+Can't get DBI::db=HASH(0x3e3de48)->{AutoInactiveDestroy}: unrecognised attribute name at /usr/lib64/perl5/DBI.pm line 708.
+[========================>] 803/798 rows (100.6%) Table ATTACHMENT (803 recs/sec)
+[>                        ]    803/763098 total rows (0.1%) - (1 sec., avg: 803 recs/sec).
+[========================>] 0/0 rows (100.0%) Table BMS_PARTINFO (0 recs/sec)                            
+[>                        ]    803/763098 total rows (0.1%) - (1 sec., avg: 803 recs/sec).
+[========================>] 1995/1995 rows (100.0%) Table CARTYPE (1995 recs/sec)                        
+[>                        ]   2798/763098 total rows (0.4%) - (2 sec., avg: 1399 recs/sec).
+[========================>] 2/2 rows (100.0%) Table CMS_PUBLICINFO (2 recs/sec)                           
+[>                        ]   2800/763098 total rows (0.4%) - (2 sec., avg: 1400 recs/sec).
+[========================>] 0/0 rows (100.0%) Table CMS_PUBLICINFO_OBJECT (0 recs/sec)                    
+[>                        ]   2800/763098 total rows (0.4%) - (2 sec., avg: 1400 recs/sec).
+[========================>] 0/0 rows (100.0%) Table DEMO_DICT (0 recs/sec)                                
+[>                        ]   2800/763098 total rows (0.4%) - (3 sec., avg: 933 recs/sec).
+[========================>] 12643/11519 rows (109.8%) Table EX_JBPM_ACTIVITY_INSTANCE (3160 recs/sec)    
+[>                        ]  15443/763098 total rows (2.0%) - (7 sec., avg: 2206 recs/sec).          
+[========================>] 0/0 rows (100.0%) Table EX_JBPM_CONFIGFILE (0 recs/sec)                       
+[>                        ]  15443/763098 total rows (2.0%) - (7 sec., avg: 2206 recs/sec).
+[========================>] 0/0 rows (100.0%) Table EX_JBPM_EXFIELD (0 recs/sec)                          
+[>                        ]  15443/763098 total rows (2.0%) - (8 sec., avg: 1930 recs/sec).
+[========================>] 0/0 rows (100.0%) Table EX_JBPM_EXPARAM (0 recs/sec)                          
+[>                        ]  15443/763098 total rows (2.0%) - (8 sec., avg: 1930 recs/sec).
+[========================>] 0/0 rows (100.0%) Table EX_JBPM_EXTENSION (0 recs/sec)                        
+[>                        ]  15443/763098 total rows (2.0%) - (8 sec., avg: 1930 recs/sec).
+[========================>] 3330/3330 rows (100.0%) Table FILEANDATTACHMENT (3330 recs/sec)               
+[>                        ]  18773/763098 total rows (2.5%) - (9 sec., avg: 2085 recs/sec).
+
+
+七、新建pg数据库,导入导出文件
+
+
+[postgres@pg01 ~]$ /usr/local/pgsql/bin/psql -d pwms4
+psql (9.5alpha1)
+Type "help" for help.
+
+pwms4=# \i /etc/ora2pg/outputSCTTT.sql 
+
+
+ALTER TABLE
+ALTER TABLE
+ALTER TABLE
+ALTER TABLE
+ALTER TABLE
+ALTER TABLE
+ALTER TABLE
+ALTER TABLE
+ALTER TABLE
+ALTER TABLE
+ALTER TABLE
+ALTER SEQUENCE
+COMMIT
+pwms4=# \dt
+                    List of relations
+ Schema |            Name             | Type  |  Owner   
+--------+-----------------------------+-------+----------
+ public | attachment                  | table | postgres
+ public | bms_partinfo                | table | postgres
+ public | cartype                     | table | postgres
+ public | cms_publicinfo              | table | postgres
+ public | cms_publicinfo_object       | table | postgres
+
+
+pwms4=# select * from sys_log limit 10;
+   id   |                   account                   |      ip       |       createtime        |                                  operate                                   | flag 
+--------+---------------------------------------------+---------------+-------------------------+----------------------------------------------------------------------------+------
+ 895124 | 广州市广华有限公司[DHECdd-07-M0026] | 172.16.2.138  | 2017-04-10 09:03:46.991 | com.glaf.gzgi.refquote.web.springmvc.QuoteController.json                  |    1
+ 895123 | 广州市广华有限公司[DHECdd-07-M0026] | 172.16.2.138  | 2017-04-10 09:03:45.314 | com.glaf.gzgi.refquote.web.springmvc.QuotationController.update            |    1
+ 895122 | 广州市广华大有限公司[DHECdd-07-M0026] | 172.16.2.138  | 2017-04-10 09:03:31.822 | com.glaf.gzgi.refquote.web.springmvc.QuotationController.quotationFileJson |    1
+ 895141 | 黄卓[150912]                              | 172.16.19.98  | 2017-04-10 09:05:51.084 | com.glaf.gzgi.report.web.springmvc.AppAndOrdAndDelAndIntController.json    |    1
+ 895140 | 黄卓[150912]                              | 172.16.19.98  | 2017-04-10 09:05:41.51  | com.glaf.gzgi.report.web.springmvc.AppAndOrdAndDelAndIntController.json    |    1
+ 895139 | 黄卓[150912]                              | 172.16.19.98  | 2017-04-10 09:05:36.313 | com.glaf.gzgi.report.web.springmvc.AppAndOrdAndDelAndIntController.json    |    1
+ 895138 | 黄卓[150912]                              | 172.16.19.98  | 2017-04-10 09:05:27.604 | com.glaf.gzgi.report.web.springmvc.AppAndOrdAndDelAndIntController.json    |    1
+ 895137 | 王贤[010948]                              | 172.16.19.147 | 2017-04-10 09:05:26.517 | com.glaf.gzgi.goods.web.springmvc.GoodsController.json                     |    1
+ 895136 | 王贤[010948]                              | 172.16.19.147 | 2017-04-10 09:05:26.265 | com.glaf.gzgi.goods.web.springmvc.GoodsApproveController.getGoodsDatas     |    1
+ 895135 | 黄卓[150912]                              | 172.16.19.98  | 2017-04-10 09:05:18.313 | com.glaf.gzgi.report.web.springmvc.AppAndOrdAndDelAndIntController.json    |    1
+(10 rows)
+
+pwms4=# 
+
+
+
+
+
+
