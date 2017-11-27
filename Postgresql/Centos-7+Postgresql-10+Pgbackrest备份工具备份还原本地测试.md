@@ -20,6 +20,11 @@
 [root@test ~]# sudo chmod 640 /etc/pgbackrest.conf
 [root@test ~]# sudo chown postgres:postgres /etc/pgbackrest.conf
 
+db-primary ⇒ Build and Install C Library
+
+[root@test ~]#sudo sh -c 'cd /root/pgbackrest-release-1.26/libc &&   perl Makefile.PL INSTALLMAN1DIR=none INSTALLMAN3DIR=none'
+[root@test ~]#sudo make -C /root/pgbackrest-release-1.26/libc test
+[root@test ~]#sudo make -C /root/pgbackrest-release-1.26/libc install
 ````
 
 
