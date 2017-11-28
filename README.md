@@ -25,3 +25,6 @@
 
 
 [2017-11-10_构建pgbackrest集中备份服务器](Postgresql/构建pgbackrest集中备份服务器.md)
+
+
+[2017-11-28_添加 Replication从节点模式下使用pgbackrest备份从库](Postgresql/构建pgbackrest%20流复制从节点备份.md)
