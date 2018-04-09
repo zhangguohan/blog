@@ -1,0 +1,50 @@
+linux的硬盘分区程序会自动为root或指定的用户保留一定的磁盘空间默认是5％，在较大的分区或是不重要的分区上这种设置会占据过多不必要的空间， 利用mke2fs的-m reserved-percentage选项可以调整这个设置来获得更多的磁盘空间且不影响性能。而在创建了文件系统之后，用户可以用tune2fs来修 改这个设置比如tune2fs -m 1 /dev/sda4 可以将保留的空间设置为1％
+
+看 mkfs.ext3 的man page，就可以知道原因了，其中有这么一句：
+-m reserved-blocks-percentage
+Specify the percentage of the filesystem blocks reserved for the
+super-user.   This  avoids  fragmentation, and allows root-owned
+daemons, such as syslogd(8), to continue to  function  correctly
+after non-privileged processes are prevented from writing to the
+filesystem.  The default percentage is 5%.
+
+也就是说，ext文件系统，包括ext2、ext3、ext4都会默认预留5%的磁盘空间，留给root用户维护系统或者记录系统关键日志的时候使用(比如磁盘使用空间已经100%的情况下的处理)，这也就是导致普通用户无法使用部分磁盘空间的原因了。
+
+如：
+
+$ df -hl /dev/sda6
+Filesystem Size Used Avail Use% Mounted on
+/dev/sda6 42G 34G 5.8G 86% /linux/sda6
+
+$ tune2fs -m 0 /dev/sda6
+tune2fs 1.41.3 (12-Oct-2008)
+Setting reserved blocks percentage to 0% (0 blocks)
+
+$ df -hl /dev/sda6
+Filesystem Size Used Avail Use% Mounted on
+/dev/sda6 42G 34G 7.9G 81% /linux/sda6
+
+另外一个具体操作过程如下，已经加了详细注释：
+
+--之前的保留区有 732463 块
+# tune2fs -l /dev/sda7 | grep "Reserved block count"
+Reserved block count:     732463
+
+--已用空间+可用空间 和 总空间 相比，还少了近3个G
+# df
+文件系统             1K-块      已用      可用 已用% 挂载点
+/dev/sda7             57677500  47662588   7085060  88% /home
+
+--调整：
+# tune2fs -r 25600 /dev/sda7
+tune2fs 1.41.9 (22-Aug-2009)
+Setting reserved blocks count to 25600
+
+--再来看看空间
+# df
+文件系统             1K-块      已用      可用 已用% 挂载点
+/dev/sda7             57677500  47662584   9912516  83% /home
+
+--确认调整成功
+# sudo tune2fs -l /dev/sda7 | grep "Reserved block count"
+Reserved block count:     25600
