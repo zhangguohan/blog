@@ -1,6 +1,6 @@
-# Ｃ语言学习笔记本
+﻿# Ｃ语言学习笔记本
 
-* iasdfsadfｄ
+* 2018年04月09号开始编写C语言
   
   
   [Readtmep](https://github.com/zhangguohan/blog/blob/595fb7351240583c5c7afc099bc5475de79edcec/test.md "克格勃")
