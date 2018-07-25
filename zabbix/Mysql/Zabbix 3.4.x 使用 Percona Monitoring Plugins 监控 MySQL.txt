@@ -98,3 +98,5 @@ rm: cannot remove `/tmp/localhost-mysql_cacti_stats.txt': Operation not permitte
 [root@szzabbix ~]# zabbix_get -s 192.168.137.3 -p 10050 -k "MySQL.running-slave"
 
 数据也有了，过一会，就可以看到有图了。
+
+
