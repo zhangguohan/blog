@@ -1,4 +1,4 @@
-zabbix 3.4 中使用 Percona Monitoring Plugins 监控 MySQL
+zabbix 3.4.x 中使用 Percona Monitoring Plugins 监控 MySQL
  
 1.安装zabbix agent
 
