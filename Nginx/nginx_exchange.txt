@@ -1,0 +1,39 @@
+server {
+        listen 80;
+        #listen [::]:80;
+        server_name mail.gwtest.us autodiscover.gwtest.us;
+        return 301 https://$host$request_uri;
+}
+
+server {
+        listen 443;
+        #listen [::]:443 ipv6only=on;
+        ssl                     on;
+        ssl_certificate         /etc/ssl/nginx/mail.gwtest.us.crt;
+        ssl_certificate_key     /etc/ssl/nginx/mail.gwtest.us.open.key;
+        ssl_session_timeout     5m;
+
+        server_name mail.gwtest.us;
+
+        location / {
+                return 301 https://mail.gwtest.us/owa;
+        }
+
+        proxy_read_timeout      360;
+        proxy_pass_header       Date;
+        proxy_pass_header       Server;
+        #proxy_pass_header      Authorization;
+
+        proxy_set_header        Host $host;
+        proxy_set_header        X-Real-IP $remote_addr;
+        proxy_set_header        X-Forwarded-For $proxy_add_x_forwarded_for;
+
+        location ~* ^/owa { proxy_pass https://exch1.test.local; }
+        location ~* ^/Microsoft-Server-ActiveSync { proxy_pass https://exch1.test.local; }
+        location ~* ^/ecp { proxy_pass https://exch1.test.local; }
+        location ~* ^/rpc { proxy_pass https://exch1.test.local; }
+        #location ~* ^/mailarchiver { proxy_pass https://mailarchiver.local; }
+
+        error_log /var/log/nginx/owa-ssl-error.log;
+        access_log /var/log/nginx/owa-ssl-access.log;
+}
