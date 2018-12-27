@@ -29,4 +29,4 @@
 
 [2017-11-28_添加 Replication从节点模式下使用pgbackrest备份从库](Postgresql/构建pgbackrest%20流复制从节点备份.md)
 
-[2018-12-27_DB2 SQLCODE-1585解决方法](DB2/2018-12-27_DB2 SQLCODE-1585解决方法.md)
+[2018-12-27_DB2_SQLCODE-1585解决方法](DB2/2018-12-27_DB2_SQLCODE-1585解决方法.md)
