@@ -29,5 +29,56 @@ SQL>
 mdir -p /u01/backup/archivelogs/
 ```
 现在，定义两个归档日志目标目录，其中一个是FRA，设置数据库参数文件
-LOG_ARCHIVE_DEST_1参数，让
+LOG_ARCHIVE_DEST_1参数，让它指向预先定的文件系统，该文件系统将是第一个归档日志目录，由于要配置LOG_ARCHIVE_DEST_1使用1=RA，因此需要使用USE_DB_RECOVERY_FILE_DEST参数来设置 LOG_ARCHIVE_DET_10参数以指向FRA，使用show parameter命令来验证设置是否正确。
+
+##### 步骤3、设置数据库归档目录
+~~~
+SQL> alter system set log_archive_dest_1='location=/u01/backup/archivelogs/';
+
+System altered.
+
+SQL> alter system set log_archive_dest_10='location=USE_DB_RECOVERY_FILE_DEST';
+
+System altered.
+~~~
+##### 步骤4、将数据库置与ARCHIVELOG模式
+~~~
+SQL> shutdown immediate;
+
+
+Database dismounted.
+ORACLE instance shut down.
+SQL> startup mount;
+ORACLE instance started.
+
+Total System Global Area 1185853440 bytes
+Fixed Size		    2227784 bytes
+Variable Size		  452985272 bytes
+Database Buffers	  721420288 bytes
+Redo Buffers		    9220096 bytes
+Database mounted.
+
+SQL> alter database archivelog;
+
+Database altered.
+
+SQL> alter database open;
+
+Database altered.
+~~~~
+
+##### 步骤5、查看数据库配置参数
+
+~~~
+
+SQL> show parameter;
+....
+
+log_archive_dest		     string
+log_archive_dest_1		     string	 location=/u01/backup/archivelo
+						 gs/
+log_archive_dest_10		     string	 location=USE_DB_RECOVERY_FILE_
+						 DEST
+log_archive_dest_11		     string
+~~~
  
