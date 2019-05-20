@@ -82,3 +82,25 @@ log_archive_dest_10		     string	 location=USE_DB_RECOVERY_FILE_
 log_archive_dest_11		     string
 ~~~
  
+
+#### 3.1.6 将数据库置于NOARCHIVELOG模式
+~~~
+
+SQL> startup mount;
+ORACLE instance started.
+
+Total System Global Area 1185853440 bytes
+Fixed Size		    2227784 bytes
+Variable Size		  452985272 bytes
+Database Buffers	  721420288 bytes
+Redo Buffers		    9220096 bytes
+Database mounted.
+
+SQL> alter database noarchivelog;
+
+Database altered.
+
+SQL> alter database open;
+
+Database altered.
+~~~
