@@ -13,12 +13,13 @@ mysql                    latest              990386cbd5c0        3 weeks ago    
 busybox                  latest              64f5d945efcc        3 weeks ago         1.2MB
 debian                   latest              8d31923452f8        4 weeks ago         101MB
 quay.io/coreos/flannel   v0.11.0-amd64       ff281650a721        4 months ago        52.6MB
-~~~
+
+
 [root@docker01 ~]# docker tag --help
 
 Usage:	docker tag SOURCE_IMAGE[:TAG] TARGET_IMAGE[:TAG]
 
-
+~~~
 ### 二、镜象打标签
 ~~~
 Create a tag TARGET_IMAGE that refers to SOURCE_IMAGE

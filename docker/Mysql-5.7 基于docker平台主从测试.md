@@ -130,7 +130,7 @@ Query OK, 0 rows affected (0.00 sec)
 
 
 #### Master 配置semisync_master模块
-
+~~~
 [root@localhost conf]# docker exec -it mysql5.7-master  mysql -uroot -p8732
 mysql: [Warning] Using a password on the command line interface can be insecure.
 Welcome to the MySQL monitor.  Commands end with ; or \g.
@@ -171,7 +171,7 @@ mysql> set global rpl_semi_sync_master_timeout = 2000;
 Query OK, 0 rows affected (0.00 sec)
 
 mysql>
-
+~~~
 #### Master DB配置mysqld.cnf文件
 ~~~~
 ########################## # semisync replication ##########################
