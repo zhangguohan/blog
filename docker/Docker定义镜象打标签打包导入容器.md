@@ -56,9 +56,11 @@ quay.io/coreos/flannel     v0.11.0-amd64       ff281650a721        4 months ago 
 ~~~~
 
 ### 四、制作镜象打包标签及修改镜象启动参数
+~~~
 [root@docker01 ~]# docker commit -a "zahng<asdf@qq.com>" -c 'CMD ["/bin/httpd","-f", "-h","/data/html/"]' -p b1 zhangguohan/busybox_http:v0.1-2
-sha256:cdeabfa3c261008736a6a3bfc68ca18ef03fe4003562d2719319ced09cdbd813
 
+sha256:cdeabfa3c261008736a6a3bfc68ca18ef03fe4003562d2719319ced09cdbd813
+~~~
 
 #### 五、推送镜象到hub.docker.com
 ~~~
