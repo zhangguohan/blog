@@ -1,0 +1,73 @@
+
+CREATE TABLE
+    APP_MP_QUOTE_MATERIA
+    (
+        ID NUMBER(12) NOT NULL,
+        QUOTEID NUMBER(12),
+        NAME_ VARCHAR2(50),
+        TRADEMARK VARCHAR2(50),
+        LENGTH NUMBER(8,2),
+        WIDTH NUMBER(8,2),
+        DEEP NUMBER(8,2),
+        OUTNUMBER INTEGER,
+        COUNTRY INTEGER,
+        CURRENCY INTEGER,
+        SUPPLIERNO VARCHAR2(100),
+        TYPE INTEGER,
+        PRICE NUMBER(8,2),
+        UNIT VARCHAR2(20),
+        PUTNUMBER NUMBER(38,2),
+        FIPRNUMBER NUMBER(38,2),
+        WASTERNUMBER NUMBER(38,2),
+        WASTERPRICE NUMBER(8,2),
+        ISPAYMA INTEGER,
+        CREATEBY VARCHAR2(50),
+
+        UPDATEBY VARCHAR2(50),
+
+        DIAMETER NUMBER(8,2),
+        DENSITY NUMBER(8,2),
+        BASEPRICE NUMBER(8,2),
+        MAOTHER NUMBER(8,2),
+        GROUP_ VARCHAR2(50),
+        MATYPE VARCHAR2(50),
+        CONSTRAINT PK_APP_MP_QUOTE_MATERIA PRIMARY KEY (ID)
+    );
+
+
+
+insert into  APP_MP_QUOTE_MATERIA
+select
+rownum,
+rownum,
+ initcap(dbms_random.string('l',dbms_random.value(2,16))),
+ initcap(dbms_random.string('l',dbms_random.value(2,17))),
+ round(dbms_random.value(1,100000),2),
+ round(dbms_random.value(1,100000),2),
+ round(dbms_random.value(1,100000),2),
+rownum,
+rownum,
+rownum,
+ initcap(dbms_random.string('l',dbms_random.value(2,17))),
+rownum,
+ round(dbms_random.value(1,100000),2),
+ initcap(dbms_random.string('l',dbms_random.value(2,17))),
+ round(dbms_random.value(1,100000),2),
+ round(dbms_random.value(1,100000),2),
+ round(dbms_random.value(1,100000),2),
+ round(dbms_random.value(1,100000),2),
+rownum,
+ initcap(dbms_random.string('l',dbms_random.value(2,17))),
+ initcap(dbms_random.string('l',dbms_random.value(2,17))),
+ round(dbms_random.value(1,100000),2),
+ round(dbms_random.value(1,100000),2),
+ round(dbms_random.value(1,100000),2),
+ round(dbms_random.value(1,100000),2),
+ initcap(dbms_random.string('l',dbms_random.value(2,17))),
+ initcap(dbms_random.string('l',dbms_random.value(2,17)))
+from
+  (select level from dual connect by level <= 1000000);
+  
+  
+  
+  select * from   APP_MP_QUOTE_MATERIA;
