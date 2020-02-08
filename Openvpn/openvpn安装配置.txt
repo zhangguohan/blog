@@ -1,0 +1,124 @@
+Centos7 + Openvpn远程VPN搭建
+
+
+
+#yum install epel-release
+
+#yum install -y openvpn easy-rsa openssl openssl-devel lzo lzo-devel pam pam-devel automake pkgconfig
+
+#systemctl stop firewalld
+#systemctl disable firewalld
+#yum install iptables-services
+#iptables -L -n
+#systemctl enable iptables
+#systemctl start iptables
+#systemctl status iptables
+
+
+
+# cp /usr/share/doc/openvpn-2.4.8/sample/sample-config-files/server.conf /etc/openvpn/
+  
+#cd /usr/share/easy-rsa/3.0.6/
+# ./easyrsa init-pki
+#./easyrsa build-ca nopass
+#./easyrsa gen-req serverl nopass
+#./easyrsa gen-req clientl nopass
+#./easyrsa sign-req server serverl nopass
+#./easyrsa sign-req client clientl nopass
+ #./easyrsa gen-dh
+
+[root@localhost openvpn]# openvpn --genkey --secret ta.key
+  
+vi server.conf   //注意对应证书路径，参见配置文件
+
+##systemctl start openvpn@server
+
+
+#sysctl -w net.ipv4.ip_forward=1
+
+
+#cat  /proc/sys/net/ipv4/ip_forward
+# vi /etc/sysctl.conf 
+[root@centos7-02 ~]# sysctl -p
+net.ipv4.ip_forward = 1
+
+[root@centos7-02 ~]# more iptables.sh 
+iptables -F INPUT
+iptables -F OUTPUT
+iptables -F FORWARD
+iptables -t nat -A POSTROUTING -s 10.8.0.0/24 -o etn0 -j MASQUERADE
+iptables -t nat -A POSTROUTING -j MASQUERADE
+iptables -A INPUT -m state --state ESTABLISHED,RELATED -j ACCEPT
+
+
+# 复制对应用客户端证书到config目录
+
+
+cd /usr/share/easy-rsa/3.0.6/
+[root@centos7-02 tank]# cd /usr/share/easy-rsa/3.0.6/
+[root@centos7-02 3.0.6]# ll
+total 56
+-rwxr-xr-x 1 root root 48730 Feb  1  2019 easyrsa
+-rw-r--r-- 1 root root  4651 Feb  1  2019 openssl-easyrsa.cnf
+drwx------ 8 root root   335 Feb  3 04:10 pki
+drwxr-xr-x 2 root root    98 Feb  3 04:00 x509-types
+[root@centos7-02 3.0.6]# cd pki/
+[root@centos7-02 pki]# ll
+total 52
+-rw------- 1 root root 1172 Feb  3 04:02 ca.crt
+drwx------ 2 root root   94 Feb  3 04:03 certs_by_serial
+-rw------- 1 root root  424 Feb  3 04:10 dh.pem
+-rw------- 1 root root  492 Feb  3 04:03 extensions.temp
+-rw------- 1 root root  140 Feb  3 04:03 index.txt
+-rw------- 1 root root   20 Feb  3 04:03 index.txt.attr
+-rw------- 1 root root   20 Feb  3 04:03 index.txt.attr.old
+-rw------- 1 root root   70 Feb  3 04:03 index.txt.old
+drwx------ 2 root root   44 Feb  3 04:03 issued
+-rw------- 1 root root 4651 Feb  3 04:02 openssl-easyrsa.cnf
+drwx------ 2 root root   58 Feb  3 04:03 private
+drwx------ 5 root root   76 Feb  3 04:02 renewed
+drwx------ 2 root root   44 Feb  3 04:03 reqs
+drwx------ 5 root root   76 Feb  3 04:02 revoked
+-rw------- 1 root root 4728 Feb  3 04:03 safessl-easyrsa.cnf
+-rw------- 1 root root   33 Feb  3 04:03 serial
+-rw------- 1 root root   33 Feb  3 04:03 serial.old
+[root@centos7-02 pki]# cp ca.crt  /etc/op
+openldap/ openvpn/  opt/      
+[root@centos7-02 pki]# cp ca.crt  /etc/op
+openldap/ openvpn/  opt/      
+[root@centos7-02 pki]# cp ca.crt  /etc/openvpn/
+checkpsw.sh         ipp.txt             server/             ta.key              
+client/             openvpn-status.log  server.conf         
+[root@centos7-02 pki]# cp ca.crt  /etc/openvpn/
+checkpsw.sh         ipp.txt             server/             ta.key              
+client/             openvpn-status.log  server.conf         
+[root@centos7-02 pki]# cp ca.crt  /etc/openvpn/client/
+[root@centos7-02 pki]# cp issued/  /etc/openvpn/client/
+clientl.crt  serverl.crt  
+[root@centos7-02 pki]# cp issued/clientl.crt  /etc/openvpn/client/
+[root@centos7-02 pki]# cp private/  /etc/openvpn/client/
+ca.key       clientl.key  serverl.key  
+[root@centos7-02 pki]# cp private/clientl.key  /etc/openvpn/client/
+[root@centos7-02 pki]# cp /etc/openvpn/ /etc/openvpn/client/
+checkpsw.sh         ipp.txt             server/             ta.key              
+client/             openvpn-status.log  server.conf         
+[root@centos7-02 pki]# cp /etc/openvpn/ta.key /etc/openvpn/client/
+[root@centos7-02 pki]# cd /etc/openvpn/
+[root@centos7-02 openvpn]# tar -zcvf client.tar.gz client/
+client/
+client/ca.crt
+client/clientl.crt
+client/clientl.key
+client/ta.key
+[root@centos7-02 openvpn]# 
+
+
+# 开启用户密码检证
+
+
+auth-user-pass-verify /etc/openvpn/checkpsw.sh via-env
+
+username-as-common-name
+
+
+
