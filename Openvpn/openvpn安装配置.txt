@@ -82,26 +82,15 @@ drwx------ 5 root root   76 Feb  3 04:02 revoked
 -rw------- 1 root root 4728 Feb  3 04:03 safessl-easyrsa.cnf
 -rw------- 1 root root   33 Feb  3 04:03 serial
 -rw------- 1 root root   33 Feb  3 04:03 serial.old
-[root@centos7-02 pki]# cp ca.crt  /etc/op
-openldap/ openvpn/  opt/      
-[root@centos7-02 pki]# cp ca.crt  /etc/op
-openldap/ openvpn/  opt/      
-[root@centos7-02 pki]# cp ca.crt  /etc/openvpn/
-checkpsw.sh         ipp.txt             server/             ta.key              
-client/             openvpn-status.log  server.conf         
-[root@centos7-02 pki]# cp ca.crt  /etc/openvpn/
-checkpsw.sh         ipp.txt             server/             ta.key              
-client/             openvpn-status.log  server.conf         
+
+   
+       
 [root@centos7-02 pki]# cp ca.crt  /etc/openvpn/client/
-[root@centos7-02 pki]# cp issued/  /etc/openvpn/client/
-clientl.crt  serverl.crt  
+
 [root@centos7-02 pki]# cp issued/clientl.crt  /etc/openvpn/client/
-[root@centos7-02 pki]# cp private/  /etc/openvpn/client/
-ca.key       clientl.key  serverl.key  
+
 [root@centos7-02 pki]# cp private/clientl.key  /etc/openvpn/client/
-[root@centos7-02 pki]# cp /etc/openvpn/ /etc/openvpn/client/
-checkpsw.sh         ipp.txt             server/             ta.key              
-client/             openvpn-status.log  server.conf         
+      
 [root@centos7-02 pki]# cp /etc/openvpn/ta.key /etc/openvpn/client/
 [root@centos7-02 pki]# cd /etc/openvpn/
 [root@centos7-02 openvpn]# tar -zcvf client.tar.gz client/
