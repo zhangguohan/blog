@@ -1,0 +1,22 @@
+注意centos 7 配置vsftp用户
+
+
+
+ yum install vsftpd
+
+0、将配置文件复制到/etc/vsftpd/替换
+
+1、echo "echo /sbin/nologin" >> /etc/shells
+
+2、新建ftp用户 
+
+useradd -s /sbin/nologin -d /www/  perwarnftp
+ 
+passwd perwarnftp
+
+
+3、将需要限制目录用的添加到chroot_list文件中
+
+
+
+ 

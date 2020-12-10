@@ -1,0 +1,7 @@
+DATE=$(date  +%Y-%m-%d)
+
+for db in $( /usr/local/pgsql/bin/psql  -c "SELECT datname FROM pg_database;" |grep -v "datname" |grep -v "(" |grep -v "\-" |grep -v "template*") ; do
+        echo -n "Backing up ${db}... "
+        /usr/local/pgsql/bin/pg_dump -Ft $db > /backup94/$db-$DATE.dump
+        echo "Done."
+done
