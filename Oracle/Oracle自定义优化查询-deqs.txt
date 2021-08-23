@@ -1,0 +1,331 @@
+一、执行SQL tuning
+
+SQL> DECLARE
+  tuning_task_name VARCHAR2(30);
+  tuning_sqltext CLOB;
+BEGIN
+tuning_sqltext := q'[WITH
+    temp AS
+    (
+     SELECT
+            a.processId,
+            a.ProcessStatus,
+            a.SPNO spNo,
+            a.id,
+            'App_SC_Survey'    tableName,
+            0               AS issueType,
+            a.back,
+            '' picNo1,
+            a.status,
+            a.updateBy,
+            a.updateDate,
+            a.opinion,
+            a.okng,
+            a.version delayReply,
+            a.exception,
+            b.DCNID,
+            b.summary,
+            c.code,
+            e.ID dcId,
+            e.version,
+            e.title,
+            e.Model,
+            e.ISSUEDATE,
+            e.AllotUser,
+            e.qdDate,
+            e.requestDate,
+            e.ECNID,
+            e.dcno,
+            e.STATUS colorStatus
+       FROM
+            App_SC_Survey a
+ INNER JOIN
+            App_SC_DesignChange e
+         ON
+            a.bookId=e.ecnid
+  LEFT JOIN
+            App_SC_EngineerChangeNotice b
+         ON
+            e.ECNID=b.iid
+  LEFT JOIN
+            APP_SC_DATADISPENSE c
+         ON
+            b.iid=c.objectid
+
+      WHERE
+            1=1
+        AND e.status IN(1,3,99)
+      UNION
+     SELECT
+            a.processId,
+            a.ProcessStatus,
+            a.VENDORNO          spNo,
+            a.PICID             id,
+            'App_SC_Drawing'    tableName,
+            1                AS issueType,
+            a.back,
+            a.picNo PICNO1,
+            a.status,
+            a.updateBy,
+            a.updateDate,
+            a.opinion ,
+            NULL okng,
+            NULL delayReply,
+            a.exception,
+            b.DCNID,
+            b.summary,
+            c.code,
+            e.ID dcId,
+            e.version,
+            e.title,
+            e.Model,
+            e.ISSUEDATE,
+            e.AllotUser,
+            e.qdDate,
+            e.requestDate,
+            e.ECNID,
+            e.dcno,
+            e.STATUS colorStatus
+       FROM
+            App_SC_Drawing a
+ INNER JOIN
+            App_SC_DesignChange e
+         ON
+            a.ecnid=e.ecnid
+  LEFT JOIN
+            App_SC_EngineerChangeNotice b
+         ON
+            e.ECNID=b.iid
+  LEFT JOIN
+            APP_SC_DATADISPENSE c
+         ON
+            b.iid=c.objectid
+
+      WHERE
+            a.id =
+            (
+             SELECT
+                    MAX(n.PICID)
+               FROM
+                    App_SC_Drawing n
+              WHERE
+                    NVL(a.VENDORNO,0)=NVL(n.VENDORNO,0)
+                AND a.ecnid=n.ecnid
+           GROUP BY
+                    n.VENDORNO,
+                    n.ecnid)
+        AND e.status IN(1,3,99)
+      UNION
+     SELECT
+            0                        processId,
+            0                        ProcessStatus,
+            a.SPNO                   spNo,
+            0                        id,
+            'App_SC_DesignChange'    tableName,
+            1                     AS issueType,
+            0                        back,
+            ''                       picNo,
+            0                        status,
+            ''                       updateBy,
+            NULL                     updateDate,
+            e.opinion,
+            ''   okng,
+            ''   delayReply,
+            ''   EXCEPTION,
+            e.id DCNID,
+            d.summary,
+            ''   code,
+            e.ID dcId,
+            e.version,
+            e.title,
+            e.Model,
+            e.ISSUEDATE,
+            e.AllotUser,
+            e.qdDate,
+            e.requestDate,
+            e.ECNID,
+            e.dcno,
+            e.STATUS   colorStatus
+       FROM
+            App_SC_DesignChange e
+  LEFT JOIN
+            App_SC_Survey a
+         ON
+            a.bookId=e.ecnid
+  LEFT JOIN
+            App_SC_Drawing b
+         ON
+            b.ecnid=e.ecnid
+  LEFT JOIN
+            App_SC_EngineerChangeNotice d
+         ON
+            e.ECNID=d.iid
+
+      WHERE
+            1=1
+        AND a.id IS NULL
+        AND b.id IS NULL
+        AND e.status IN(1,3,99)
+    )
+SELECT
+    a.id,a.updateDate as createdate
+FROM
+    temp a
+LEFT JOIN
+    APP_SUPPLIER b
+ ON
+    a. spNo=b.SUPPLIERNO
+WHERE
+    spNo||TABLENAME||dcId IN
+    (
+     SELECT
+            spNo||MAX(TABLENAME)||dcId
+       FROM
+            temp
+   GROUP BY
+            spNo,
+            dcId)
+AND a.status!=1
+AND (
+        a.PROCESSSTATUS = 1001
+     OR a.PROCESSSTATUS=0)
+AND model in (  select substr(E.CODE,7)         from sys_role E inner join sys_dept_role R on E.ID = R.SYSROLEID
+     inner join SYS_USER_ROLE UR on R.ID = UR.ROLEID inner join SYS_USER U on UR.USERID=U.ID where U.ACCOUNT= '161920'
+     and E.CODE like 'SC_DD_%')
+and AllotUser in (
+         select case to_char(A.CODE) when 'xjxqh' then  to_char('LBJ')
+         else to_char(A.CODE)
+          end code  from SYS_DEPARTMENT A left join SYS_USER B on A.Id=B.DEPTID 
+          inner join sys_user_role ur  on ur.userid=B.id
+           left join sys_dept_role E  on E.ID = ur.ROLEID
+          inner join sys_role r on E.sysRoleId=r.id 
+          where B.ACCOUNT='161920' and R.NAME ='零部件采购科机种担当'
+    )]';
+tuning_task_name := DBMS_SQLTUNE.CREATE_TUNING_TASK(
+sql_text => tuning_sqltext,
+bind_list => NULL,
+user_name => 'DEQS',
+scope => 'COMPREHENSIVE',
+time_limit => 60,
+task_name => 'first_tuning_task62',
+description => 'Tune T62 count');
+END;
+
+/
+
+
+
+二、执行SQL_tuning的执行计划
+
+SQL> BEGIN
+DBMS_SQLTUNE.EXECUTE_TUNING_TASK( task_name => 'first_tuning_task62' );
+END;
+/ 
+
+
+三、检查优化任务的状态
+
+SELECT task_name,status FROM USER_ADVISOR_TASKS WHERE task_name ='first_tuning_task62';  
+
+
+
+
+四、显示SQL_tuning的执行计划
+
+set serveroutput on  
+SET LONG 999999  
+set serveroutput on size 999999  
+SET LINESIZE 100  
+SELECT DBMS_SQLTUNE.REPORT_TUNING_TASK( 'first_tuning_task62') from DUAL;  
+
+
+
+
+
+
+
+五、删除SQL_tuning的执行计划
+
+
+EXEC DBMS_SQLTUNE.DROP_TUNING_TASK('first_tuning_task62')
+
+
+
+优化
+
+
+-------------------------------------------------------------------------------                     
+FINDINGS SECTION (2 findings)                                                                       
+-------------------------------------------------------------------------------                     
+                                                                                                    
+1- Index Finding (see explain plans section below)                                                  
+--------------------------------------------------                                                  
+  通过创建一个或多个索引可以改进此语句的执行计划。                                                  
+
+DBMS_SQLTUNE.REPORT_TUNING_TASK('FIRST_TUNING_TASK62')                                              
+--------------------------------------------------------------------------------                    
+                                                                                                    
+  Recommendation (estimated benefit: 98.2%)                                                         
+  -----------------------------------------                                                         
+  - 考虑运行可以改进物理方案设计的访问指导或者创建推荐的索引。                                      
+    create index DEQS.IDX$$_7BDB0001 on DEQS.APP_SC_DRAWING("ECNID",NVL("VENDORNO",'0'));                                                                                      
+                                                                                                    
+  - 考虑运行可以改进物理方案设计的访问指导或者创建推荐的索引。                                      
+    create index DEQS.IDX$$_7BDB0003 on DEQS.APP_SC_ENGINEERCHANGENOTICE("IID") ;                                                                                               
+                                                                                                    
+
+DBMS_SQLTUNE.REPORT_TUNING_TASK('FIRST_TUNING_TASK62')                                              
+--------------------------------------------------------------------------------                    
+  - 考虑运行可以改进物理方案设计的访问指导或者创建推荐的索引。                                      
+    create index DEQS.IDX$$_7BDB0004 on DEQS.SYS_ROLE("CODE","ID",SUBSTR("CODE",7));                                                                                           
+                                                                                                    
+  - 考虑运行访问指导以改进物理方案设计或者创建推荐的索引。如果选择创建推荐的索引                    
+, 请考虑删除索引 "DEQS"."IDX_ROLE_NAME",                                                            
+    因为它是推荐的索引的前缀。                                                                      
+    create index DEQS.IDX$$_7BDB0005 on DEQS.SYS_ROLE("NAME","ID");                                 
+                                                                                                    
+  - 考虑运行可以改进物理方案设计的访问指导或者创建推荐的索引。                                      
+    create index DEQS.IDX$$_7BDB0006 on DEQS.APP_SUPPLIER("SUPPLIERNO");                            
+
+DBMS_SQLTUNE.REPORT_TUNING_TASK('FIRST_TUNING_TASK62')                                              
+--------------------------------------------------------------------------------                    
+                                                                                                    
+  Rationale                                                                                         
+  ---------                                                                                         
+    创建推荐的索引可以显著地改进此语句的执行计划。但是, 使用典型的 SQL 工作量运                     
+行 "访问指导"                                                                                       
+    可能比单个语句更可取。通过这种方法可以获得全面的索引建议案, 包括计算索引维护                    
+的开销和附加的空间消耗。                                                                            
+                                                                                                    
+2- Restructure SQL finding (see plan 1 in explain plans section)                                    
+----------------------------------------------------------------                                    
+  在执行计划的行 ID 3 处发现开销很大的 "UNION" 操作。                                               
+
+DBMS_SQLTUNE.REPORT_TUNING_TASK('FIRST_TUNING_TASK62')                                              
+--------------------------------------------------------------------------------                    
+                                                                                                    
+  Recommendation                                                                                    
+  --------------                                                                                    
+  - 如果允许重复或可以保证唯一性, 则考虑用 "UNION ALL" 代替 "UNION"。                          
+
+
+
+
+
+1、建如下索引：
+
+   create index DEQS.IDX$$_7BDB0001 on DEQS.APP_SC_DRAWING("ECNID",NVL("VENDORNO",'0'));     
+  create index DEQS.IDX$$_7BDB0003 on DEQS.APP_SC_ENGINEERCHANGENOTICE("IID") ;   
+  create index DEQS.IDX$$_7BDB0004 on DEQS.SYS_ROLE("CODE","ID",SUBSTR("CODE",7));    
+  drop index "DEQS"."IDX_ROLE_NAME";
+  create index DEQS.IDX$$_7BDB0005 on DEQS.SYS_ROLE("NAME","ID");    
+  create index DEQS.IDX$$_7BDB0006 on DEQS.APP_SUPPLIER("SUPPLIERNO");    
+
+
+
+2、优化SQL，
+      
+     - 如果允许重复或可以保证唯一性, 则考虑用 "UNION ALL" 代替 "UNION"。    
+
+
+

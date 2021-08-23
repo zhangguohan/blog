@@ -51,4 +51,87 @@ Nmap done: 1 IP address (1 host up) scanned in 2.26 seconds
 (UNKNOWN) [211.155.25.184] 21 (ftp) open
 
 ```
+## 使用scapy定制数据包进行高级扫描
+
+1 scapy定制ARP协议
+
+```
+
+>>> ARP().display()
+###[ ARP ]###
+  hwtype= 0x1
+  ptype= IPv4
+  hwlen= None
+  plen= None
+  op= who-has
+  hwsrc= 08:00:27:73:ad:3f
+  psrc= 108.88.3.166
+  hwdst= 00:00:00:00:00:00
+  pdst= 0.0.0.0
+
+>>>
+
+**定义向108.88.3.254 发送ARP请求数据包**
+
+>>> sr1(ARP(pdst="108.88.3.254"))
+Begin emission:
+Finished sending 1 packets.
+*
+Received 1 packets, got 1 answers, remaining 0 packets
+<ARP  hwtype=0x1 ptype=IPv4 hwlen=6 plen=4 op=is-at hwsrc=78:45:c4:f0:2b:2d psrc=108.88.3.254 hwdst=08:00:27:73:ad:3f pdst=108.88.3.166 |<Padding  load='\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00' |>>
+>>> sr1(ARP(pdst="108.88.3.7"))
+Begin emission:
+Finished sending 1 packets.
+
+
+
+psrc=108.88.3.254，说明已经收到网关的应答包
+```
+2、 scapy定制ping包
+
+
+```
+
+>>> sr1(IP(dst="108.88.3.254")/ICMP(),timeout=1)
+Begin emission:
+Finished sending 1 packets.
+..*
+Received 3 packets, got 1 answers, remaining 0 packets
+<IP  version=4 ihl=5 tos=0x0 len=28 id=39610 flags= frag=0 ttl=64 proto=icmp chksum=0xffd2 src=108.88.3.254 dst=108.88.3.166 |<ICMP  type=echo-reply code=0 chksum=0xffff id=0x0 seq=0x0 |<Padding  load='\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00' |>>>
+
+
+
+>>> sr1(IP(dst="108.88.3.24")/ICMP(),timeout=1)
+Begin emission:
+WARNING: Mac address to reach destination not found. Using broadcast.
+Finished sending 1 packets.
+..................................................................................................
+Received 98 packets, got 0 answers, remaining 1 packets
+>>>
+
+
+```
+
+3、scapy定制TCP协议请求
+
+```
+>>> sr1(IP(dst="108.88.3.254")/TCP(flags="S",dport=880),timeout=1)
+Begin emission:
+Finished sending 1 packets.
+...*
+Received 4 packets, got 1 answers, remaining 0 packets
+<IP  version=4 ihl=5 tos=0x0 len=44 id=0 flags=DF frag=0 ttl=64 proto=tcp chksum                                                                                                             =0x5a78 src=108.88.3.254 dst=108.88.3.166 |<TCP  sport=880 dport=ftp_data seq=33                                                                                                             87894663 ack=1 dataofs=6 reserved=0 flags=SA window=5840 chksum=0xa7f6 urgptr=0                                                                                                              options=[('MSS', 1460)] |<Padding  load='\x00\x00' |>>>
+>>>
+
+我们能收到一个flags=SA 的数据包，SA标地即SYN+ACK，我们收到服务器tcp三次握手中的第二个包，能收到回应，表示端口开放。
+
+注：这种基于tcp的半链接扫描，更隐密，更不容易被发现。
+
+
+```
+
+
+
+
+4.5 僵尸扫描
 
