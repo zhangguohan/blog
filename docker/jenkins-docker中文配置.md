@@ -1,4 +1,4 @@
-#### 切换root用户  
+### 切换root用户  
 docker exec --user root -it jenkins bash
 
 
