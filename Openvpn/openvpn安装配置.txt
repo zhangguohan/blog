@@ -19,6 +19,9 @@ Centos7 + Openvpn远程VPN搭建
 # cp /usr/share/doc/openvpn-2.4.8/sample/sample-config-files/server.conf /etc/openvpn/
   
 #cd /usr/share/easy-rsa/3.0.6/
+#vi  vars 
+set_var EASYRSA_CERT_EXPIRE 3600
+
 # ./easyrsa init-pki
 #./easyrsa build-ca nopass
 #./easyrsa gen-req serverl nopass
