@@ -1,0 +1,9 @@
+
+Docker 安装节点mysql8 
+
+1、docker run --name mysql8  -v /tmp/mysqldata/:/var/lib/mysql  -p 3306:3306 -e MYSQL_ROOT_PASSWORD=8732 -d mysql:latest   --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
+
+
+2、修默认密码验证
+
+ALTER USER 'root'@'%' IDENTIFIED WITH mysql_native_password BY '8732';
