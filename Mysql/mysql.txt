@@ -6,4 +6,4 @@ Docker 安装节点mysql8
 
 2、修默认密码验证
 
-ALTER USER 'root'@'%' IDENTIFIED WITH mysql_native_password BY '8732';
+ALTER USER 'root'@'%' IDENTIFIED WITH mysql_native_password BY '8732';】
