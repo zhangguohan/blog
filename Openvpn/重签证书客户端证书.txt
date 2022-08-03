@@ -1,0 +1,4 @@
+重签证书：
+#./easyrsa gen-req clientl2022 nopass
+
+#./easyrsa sign-req client clientl2022 nopass
