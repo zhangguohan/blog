@@ -1,0 +1,119 @@
+
+操作系统：Debian 11 x64 (bullseye)
+
+
+1、关闭防火墙：
+
+root@web-01:~# sudo ufw disable
+Firewall stopped and disabled on system startup
+root@web-01:~# iptables -L -n
+
+
+安装x-ui
+
+root@web-01:~#  bash <(curl -Ls https://raw.githubusercontent.com/vaxilu/x-ui/master/install.sh)
+架构: amd64
+开始安装
+Reading package lists... Done
+Building dependency tree... Done
+Reading state information... Done
+curl is already the newest version (7.74.0-1.3+deb11u7).
+tar is already the newest version (1.34+dfsg-1).
+wget is already the newest version (1.21-1+deb11u1).
+The following package was automatically installed and is no longer required:
+  linux-image-5.10.0-20-amd64
+Use 'apt autoremove' to remove it.
+0 upgraded, 0 newly installed, 0 to remove and 0 not upgraded.
+Failed to stop x-ui.service: Unit x-ui.service not loaded.
+检测到 x-ui 最新版本：0.3.2，开始安装
+WARNING: timestamping does nothing in combination with -O. See the manual
+for details.
+
+--2023-05-23 10:06:39--  https://github.com/vaxilu/x-ui/releases/download/0.3.2/x-ui-linux-amd64.tar.gz
+Resolving github.com (github.com)... 140.82.114.4
+Connecting to github.com (github.com)|140.82.114.4|:443... connected.
+HTTP request sent, awaiting response... 302 Found
+Location: https://objects.githubusercontent.com/github-production-release-asset-2e65be/368390355/e19f3b66-cba1-4a80-9a63-b38f1521114f?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=AKIAIWNJYAX4CSVEH53A%2F20230523%2Fus-east-1%2Fs3%2Faws4_request&X-Amz-Date=20230523T100639Z&X-Amz-Expires=300&X-Amz-Signature=0f4c924750124da19d27867788f51c57fc20171886f49a75523e0cd8be0b32ed&X-Amz-SignedHeaders=host&actor_id=0&key_id=0&repo_id=368390355&response-content-disposition=attachment%3B%20filename%3Dx-ui-linux-amd64.tar.gz&response-content-type=application%2Foctet-stream [following]
+--2023-05-23 10:06:39--  https://objects.githubusercontent.com/github-production-release-asset-2e65be/368390355/e19f3b66-cba1-4a80-9a63-b38f1521114f?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=AKIAIWNJYAX4CSVEH53A%2F20230523%2Fus-east-1%2Fs3%2Faws4_request&X-Amz-Date=20230523T100639Z&X-Amz-Expires=300&X-Amz-Signature=0f4c924750124da19d27867788f51c57fc20171886f49a75523e0cd8be0b32ed&X-Amz-SignedHeaders=host&actor_id=0&key_id=0&repo_id=368390355&response-content-disposition=attachment%3B%20filename%3Dx-ui-linux-amd64.tar.gz&response-content-type=application%2Foctet-stream
+Resolving objects.githubusercontent.com (objects.githubusercontent.com)... 185.199.110.133, 185.199.109.133, 185.199.108.133, ...
+Connecting to objects.githubusercontent.com (objects.githubusercontent.com)|185.199.110.133|:443... connected.
+HTTP request sent, awaiting response... 200 OK
+Length: 16509803 (16M) [application/octet-stream]
+Saving to: ‘/usr/local/x-ui-linux-amd64.tar.gz’
+
+/usr/local/x-ui-linux-amd64.tar.gz               100%[=======================================================================================================>]  15.74M  56.0MB/s    in 0.3s    
+
+2023-05-23 10:06:39 (56.0 MB/s) - ‘/usr/local/x-ui-linux-amd64.tar.gz’ saved [16509803/16509803]
+
+x-ui/
+x-ui/x-ui
+x-ui/bin/
+x-ui/x-ui.sh
+x-ui/x-ui.service
+x-ui/bin/geoip.dat
+x-ui/bin/geosite.dat
+x-ui/bin/xray-linux-amd64
+--2023-05-23 10:06:40--  https://raw.githubusercontent.com/vaxilu/x-ui/main/x-ui.sh
+Resolving raw.githubusercontent.com (raw.githubusercontent.com)... 2606:50c0:8003::154, 2606:50c0:8002::154, 2606:50c0:8000::154, ...
+Connecting to raw.githubusercontent.com (raw.githubusercontent.com)|2606:50c0:8003::154|:443... connected.
+HTTP request sent, awaiting response... 200 OK
+Length: 15922 (16K) [text/plain]
+Saving to: ‘/usr/bin/x-ui’
+
+/usr/bin/x-ui                                    100%[=======================================================================================================>]  15.55K  --.-KB/s    in 0s      
+
+2023-05-23 10:06:40 (79.8 MB/s) - ‘/usr/bin/x-ui’ saved [15922/15922]
+
+出于安全考虑，安装/更新完成后需要强制修改端口与账户密码
+确认是否继续?[y/n]:y
+请设置您的账户名:tankzhang
+您的账户名将设定为:tankzhang
+请设置您的账户密码:qazwsx6220104
+您的账户密码将设定为:qazwsx6220104
+请设置面板访问端口:31280
+您的面板访问端口将设定为:31280
+确认设定,设定中
+set username and password success
+账户密码设定完成
+set port 31280 success面板端口设定完成
+Created symlink /etc/systemd/system/multi-user.target.wants/x-ui.service → /etc/systemd/system/x-ui.service.
+x-ui v0.3.2 安装完成，面板已启动，
+
+x-ui 管理脚本使用方法: 
+----------------------------------------------
+x-ui              - 显示管理菜单 (功能更多)
+x-ui start        - 启动 x-ui 面板
+x-ui stop         - 停止 x-ui 面板
+x-ui restart      - 重启 x-ui 面板
+x-ui status       - 查看 x-ui 状态
+x-ui enable       - 设置 x-ui 开机自启
+x-ui disable      - 取消 x-ui 开机自启
+x-ui log          - 查看 x-ui 日志
+x-ui v2-ui        - 迁移本机器的 v2-ui 账号数据至 x-ui
+x-ui update       - 更新 x-ui 面板
+x-ui install      - 安装 x-ui 面板
+x-ui uninstall    - 卸载 x-ui 面板
+----------------------------------------------
+root@web-01:~# 
+
+
+
+IE访问31280： 配置v2ray
+ 
+
+
+
+   49  bash <(curl -Ls https://cdn.jsdelivr.net/gh/missuo/OpenAI-Checker/openai.sh)
+   50   bash <(curl -fsSL git.io/warp.sh) d
+  
+   75   bash <(curl -Ls https://cdn.jsdelivr.net/gh/missuo/OpenAI-Checker/openai.sh)
+   76  hist
+   77  history 
+   78   bash <(curl -fsSL git.io/warp.sh) d
+   79  systemctl enable wg-quick@.service
+   80   bash <(curl -Ls https://cdn.jsdelivr.net/gh/missuo/OpenAI-Checker/openai.sh)
+   81  reboot 
+   82  ifconfig 
+   83  ifconfig 
+   84  ping www.qq.com
+   85   bash <(curl -Ls https://cdn.jsdelivr.net/gh/missuo/OpenAI-Checker/openai.sh)
