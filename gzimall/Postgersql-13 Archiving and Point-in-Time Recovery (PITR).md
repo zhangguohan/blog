@@ -76,7 +76,7 @@ pg_basebackup: base backup completed
 
 1、 In to backupdir tar base.tar.gz in to the cluster data directory
 2、In to backupdir tar pg_wal.tar.gz file copy file data direcorty into pg_wal
-3、copy old data/pg_wal/ *file them into pg_wal/
+3、copy old data/pg_wal/0*file them into pg_wal/
 
 4、 Modify postgredsql.conf
 

@@ -1,0 +1,306 @@
+
+一、新建测试表及数据
+
+``` Postgresql.conf
+
+
+# - Settings -
+
+wal_level = replica			# minimal, replica, or logical
+					# (change requires restart)
+#fsync = on				# flush data to disk for crash safety
+					# (turning this off can cause
+
+# - Archiving -
+
+archive_mode = on		# enables archiving; off, on, or always
+				# (change requires restart)
+#archive_library = ''		# library to use to archive a logfile segment
+				# (empty string indicates archive_command should
+				# be used)
+archive_command = 'test ! -f /home/postgres/archivelogs/%f && cp %p /home/postgres/archivelogs/%f'		# command to use to archive a logfile segment
+				# placeholders: %p = path of file to archive
+				#               %f = file name only
+				# e.g. 'test ! -f /mnt/server/archivedir/%f && cp %p /mnt/server/archivedir/%f'
+#archive_timeout = 0		# force a logfile segment switch after this
+				# number of seconds; 0 disables
+
+
+#------------------------------------------------------------------------------
+# REPLICATION
+#------------------------------------------------------------------------------
+
+# - Sending Servers -
+
+# Set these on the primary and on any standby that will send replication data.
+
+max_wal_senders = 10		# max number of walsender processes
+				# (change requires restart)
+max_replication_slots = 10	# max number of replication slots
+
+
+
+```
+
+test=#  CREATE TABLE public.t1 (id integer, curr_time timestamp, notes text);
+CREATE TABLE
+test=# INSERT INTO public.t1 VALUES(generate_seri es (1,100000), now(), md5(random()::text));
+ERROR:  syntax error at or near "es"
+LINE 1: INSERT INTO public.t1 VALUES(generate_seri es (1,100000), no...
+                                                   ^
+test=# INSERT INTO public.t1 VALUES(generate_series (1,100000), now(), md5(random()::text));
+INSERT 0 100000
+test=# INSERT INTO public.t1 VALUES(generate_series (1,100000), now(), md5(random()::text));
+INSERT 0 100000
+test=# INSERT INTO public.t1 VALUES(generate_series (1,100000), now(), md5(random()::text));
+INSERT 0 100000
+test=# SELECT CURRENT_TIMESTAMP;
+       current_timestamp       
+-------------------------------
+ 2024-01-04 20:32:16.565511+08
+(1 row)
+
+test=# select count(*) from t1;
+ count  
+--------
+ 300000
+(1 row)
+
+test=# 
+
+
+
+
+二、执行基备份
+
+执行basesbakcup
+
+
+```basebackup.sh
+
+
+[root@nginx-lb postgres]# more basebackup.sh 
+export DATESTAMP=$(date +%Y-%m-%d)
+mkdir -p /home/postgres/backup/$DATESTAMP
+/usr/local/postgresql-15.5/bin/pg_basebackup -h localhost -p 5432 -U postgres -D /home/postgres/backup/$DATESTAMP -Ft -z -Xs -P -v
+[root@nginx-lb postgres]# d
+
+
+
+```
+[postgres@nginx-lb ~]$ ./basebackup.sh 
+pg_basebackup: initiating base backup, waiting for checkpoint to complete
+pg_basebackup: checkpoint completed
+pg_basebackup: write-ahead log start point: 0/4000110 on timeline 1
+pg_basebackup: starting background WAL receiver
+pg_basebackup: created temporary replication slot "pg_basebackup_9026"
+55282/55282 kB (100%), 1/1 tablespace                                         
+pg_basebackup: write-ahead log end point: 0/40001E8
+pg_basebackup: waiting for background process to finish streaming ...
+pg_basebackup: syncing data to disk ...
+pg_basebackup: renaming backup_manifest.tmp to backup_manifest
+pg_basebackup: base backup completed
+[postgres@nginx-lb ~]$ 
+
+
+[postgres@nginx-lb ~]$ /usr/local/postgresql-15.5/bin/psql -d test
+psql (15.5)
+Type "help" for help.
+
+test=# select count(*) from t1;
+ count  
+--------
+ 300000
+(1 row)
+
+test=# INSERT INTO public.t1 VALUES(generate_series (1,100000), now(), md5(random()::text));
+INSERT 0 100000
+test=# INSERT INTO public.t1 VALUES(generate_series (1,100000), now(), md5(random()::text));
+INSERT 0 100000
+test=# INSERT INTO public.t1 VALUES(generate_series (1,100000), now(), md5(random()::text));
+INSERT 0 100000
+test=# INSERT INTO public.t1 VALUES(generate_series (1,100000), now(), md5(random()::text));
+INSERT 0 100000
+test=# INSERT INTO public.t1 VALUES(generate_series (1,100000), now(), md5(random()::text));
+INSERT 0 100000
+test=# INSERT INTO public.t1 VALUES(generate_series (1,100000), now(), md5(random()::text));
+INSERT 0 100000
+test=# INSERT INTO public.t1 VALUES(generate_series (1,100000), now(), md5(random()::text));
+^[[AINSERT 0 100000
+test=# INSERT INTO public.t1 VALUES(generate_series (1,100000), now(), md5(random()::text));
+^[[AINSERT 0 100000
+test=# INSERT INTO public.t1 VALUES(generate_series (1,100000), now(), md5(random()::text));
+INSERT 0 100000
+test=# INSERT INTO public.t1 VALUES(generate_series (1,100000), now(), md5(random()::text));
+INSERT 0 100000
+test=# select count(*) from t1;
+  count  
+---------
+ 1300000
+(1 row)
+
+
+test=# SELECT CURRENT_TIMESTAMP;
+       current_timestamp       
+-------------------------------
+ 2024-01-04 20:48:09.274669+08
+(1 row)
+
+test=# SELECT CURRENT_TIMESTAMP;
+       current_timestamp       
+-------------------------------
+ 2024-01-04 20:48:10.091673+08
+(1 row)
+
+
+test=# truncate table t1;
+TRUNCATE TABLE
+test=# SELECT CURRENT_TIMESTAMP;
+
+
+test=# SELECT CURRENT_TIMESTAMP;
+       current_timestamp       
+-------------------------------
+ 2024-01-04 20:49:07.338032+08
+(1 row)
+
+test=# select count(*) from t1;
+ count 
+-------
+     0
+(1 row)
+
+test=# 
+
+
+三、还原测试
+
+# 停止正在运行的Postgresql 重命名 data目录
+ # ./stop.sh 
+
+# mv /usr/local/postgresql-15.5/data /  /usr/local/postgresql-15.5/data-bak
+
+#mkdir -p  /usr/local/postgresql-15.5/data
+#chown postgres:postgres -R data
+#chown 0700 data
+#tar -zxvf base.tar.gz -C /usr/local/postgresql-15.5/data/
+#chown 0700 data
+
+[root@nginx-lb archive_status]# su - postgres
+
+复制旧的正在运行产生的pg_wal目录下文件（如没有可能导致没有归档事务丢失，不能使用归档的pg_wal目录，此部份不能用于当前时间的点恢复，用于上一个基份恢复)
+
+
+[postgres@nginx-lb ~]$ cd  /usr/local/postgresql-15.5/data-bak/pg_wal/
+[postgres@nginx-lb pg_wal]$ ll
+总用量 114692
+-rw------- 1 postgres postgres      338 1月   4 20:40 000000010000000000000004.00000110.backup
+-rw------- 1 postgres postgres 16777216 1月   4 20:47 000000010000000000000005
+-rw------- 1 postgres postgres 16777216 1月   4 20:47 000000010000000000000006
+-rw------- 1 postgres postgres 16777216 1月   4 20:47 000000010000000000000007
+-rw------- 1 postgres postgres 16777216 1月   4 20:47 000000010000000000000008
+-rw------- 1 postgres postgres 16777216 1月   4 20:47 000000010000000000000009
+-rw------- 1 postgres postgres 16777216 1月   4 20:47 00000001000000000000000A
+-rw------- 1 postgres postgres 16777216 1月   4 20:48 00000001000000000000000B
+drwx------ 2 postgres postgres      281 1月   4 20:47 archive_status
+[postgres@nginx-lb pg_wal]$ cp 0* /usr/local/postgresql-15.5/data/pg_wal/
+[postgres@nginx-lb pg_wal]$ cd /usr/local/postgresql-15.5/data/
+[postgres@nginx-lb data]$ ll
+总用量 60
+-rw------- 1 postgres postgres   225 1月   4 20:40 backup_label
+drwx------ 6 postgres postgres    46 1月   4 20:37 base
+drwx------ 2 postgres postgres  4096 1月   4 20:52 global
+drwx------ 2 postgres postgres     6 1月   4 20:18 pg_commit_ts
+drwx------ 2 postgres postgres     6 1月   4 20:18 pg_dynshmem
+-rw------- 1 postgres postgres  4789 1月   4 20:18 pg_hba.conf
+-rw------- 1 postgres postgres  1636 1月   4 20:18 pg_ident.conf
+drwx------ 4 postgres postgres    68 1月   4 20:40 pg_logical
+drwx------ 4 postgres postgres    36 1月   4 20:18 pg_multixact
+drwx------ 2 postgres postgres     6 1月   4 20:18 pg_notify
+drwx------ 2 postgres postgres     6 1月   4 20:40 pg_replslot
+drwx------ 2 postgres postgres     6 1月   4 20:18 pg_serial
+drwx------ 2 postgres postgres     6 1月   4 20:18 pg_snapshots
+drwx------ 2 postgres postgres     6 1月   4 20:18 pg_stat
+drwx------ 2 postgres postgres     6 1月   4 20:18 pg_stat_tmp
+drwx------ 2 postgres postgres     6 1月   4 20:18 pg_subtrans
+drwx------ 2 postgres postgres     6 1月   4 20:18 pg_tblspc
+drwx------ 2 postgres postgres     6 1月   4 20:18 pg_twophase
+-rw------- 1 postgres postgres     3 1月   4 20:18 PG_VERSION
+drwx------ 3 postgres postgres   300 1月   4 20:53 pg_wal
+drwx------ 2 postgres postgres    18 1月   4 20:18 pg_xact
+-rw------- 1 postgres postgres    88 1月   4 20:18 postgresql.auto.conf
+-rw------- 1 postgres postgres 29495 1月   4 20:25 postgresql.conf
+-rw------- 1 postgres postgres     0 1月   4 20:40 tablespace_map
+
+[postgres@nginx-lb data]$ vi postgresql.conf 
+
+
+restore_command = 'cp /home/postgres/archivelogs/%f %p'		# command to use to restore an archived logfile segment
+
+recovery_target_time = '2024-01-04 20:48:00'	# the time stamp up to which recovery will proceed
+				# (change requires restart)
+
+
+
+
+
+[postgres@nginx-lb data]$ touch recovery.signal
+
+[postgres@nginx-lb ~]$ ./start.sh 
+waiting for server to start..... done
+server started
+[postgres@nginx-lb ~]$ ll
+总用量 24
+-rwxr-xr-x 1 postgres postgres  103 1月   4 20:20 ！
+drwxrwxr-x 2 postgres postgres 4096 1月   4 20:47 archivelogs
+drwxrwxr-x 3 postgres postgres   24 1月   4 20:37 backup
+-rwxr-xr-x 1 postgres postgres  208 1月   4 20:37 basebackup.sh
+-rw------- 1 postgres postgres 2045 1月   4 20:58 logfile
+-rwxr-xr-x 1 postgres postgres   91 1月   4 20:19 start.sh
+-rwxr-xr-x 1 postgres postgres  103 1月   4 20:20 stop.sh
+[postgres@nginx-lb ~]$ more logfile 
+2024-01-04 20:58:45.956 CST [9780] LOG:  starting PostgreSQL 15.5 on x86_64-pc-linux-gnu, compiled by gcc (GCC) 4.8.5 20150623 (Red Hat 4.8.5-44), 64-bit
+2024-01-04 20:58:45.956 CST [9780] LOG:  listening on IPv6 address "::1", port 5432
+2024-01-04 20:58:45.956 CST [9780] LOG:  listening on IPv4 address "127.0.0.1", port 5432
+2024-01-04 20:58:45.960 CST [9780] LOG:  listening on Unix socket "/tmp/.s.PGSQL.5432"
+2024-01-04 20:58:45.964 CST [9783] LOG:  database system was interrupted; last known up at 2024-01-04 20:40:00 CST
+cp: cannot stat '/home/postgres/archivelogs/00000002.history': No such file or directory
+2024-01-04 20:58:47.094 CST [9783] LOG:  starting point-in-time recovery to 2024-01-04 20:48:00+08
+2024-01-04 20:58:47.105 CST [9783] LOG:  restored log file "000000010000000000000004" from archive
+2024-01-04 20:58:47.359 CST [9783] LOG:  redo starts at 0/4000110
+2024-01-04 20:58:47.369 CST [9783] LOG:  restored log file "000000010000000000000005" from archive
+2024-01-04 20:58:47.741 CST [9783] LOG:  consistent recovery state reached at 0/40001E8
+2024-01-04 20:58:47.742 CST [9780] LOG:  database system is ready to accept read-only connections
+2024-01-04 20:58:47.880 CST [9783] LOG:  restored log file "000000010000000000000006" from archive
+2024-01-04 20:58:48.194 CST [9783] LOG:  restored log file "000000010000000000000007" from archive
+2024-01-04 20:58:48.498 CST [9783] LOG:  restored log file "000000010000000000000008" from archive
+2024-01-04 20:58:48.798 CST [9783] LOG:  restored log file "000000010000000000000009" from archive
+2024-01-04 20:58:49.019 CST [9783] LOG:  restored log file "00000001000000000000000A" from archive
+cp: cannot stat '/home/postgres/archivelogs/00000001000000000000000B': No such file or directory
+2024-01-04 20:58:49.312 CST [9783] LOG:  recovery stopping before commit of transaction 751, time 2024-01-04 20:48:02.118339+08
+2024-01-04 20:58:49.312 CST [9783] LOG:  pausing at the end of recovery
+2024-01-04 20:58:49.312 CST [9783] HINT:  Execute pg_wal_replay_resume() to promote.
+[postgres@nginx-lb ~]$ /usr/local/postgresql-15.5/bin/psql 
+psql (15.5)
+Type "help" for help.
+
+postgres=# pg_wal_replay_resume();
+ERROR:  syntax error at or near "pg_wal_replay_resume"
+LINE 1: pg_wal_replay_resume();
+        ^
+postgres=# select pg_wal_replay_resume();
+ pg_wal_replay_resume 
+----------------------
+ 
+(1 row)
+
+postgres=# \c test
+You are now connected to database "test" as user "postgres".
+test=# select count(*) from t1;
+  count  
+---------
+ 1300000
+(1 row)
+
+test=# 
+
